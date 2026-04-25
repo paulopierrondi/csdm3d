@@ -11,12 +11,13 @@ It helps architects, TAEs, consultants, and platform teams turn CSDM5 maturity i
 - AI-ready insights and dashboard
 - JSON report export
 
-![CSDM3D workspace](public/csdm3d-assets/02-workspace-map.png)
+![CSDM3D universe](public/csdm3d-assets/03-csdm3d-universe.png)
 
 Launch media:
 
 - [Demo video MP4](public/csdm3d-assets/csdm3d-demo.mp4)
 - [Login screenshot](public/csdm3d-assets/01-login.png)
+- [Workspace overview](public/csdm3d-assets/02-workspace-overview.png)
 - [Dashboard screenshot](public/csdm3d-assets/03-dashboard-insights.png)
 
 ## Positioning

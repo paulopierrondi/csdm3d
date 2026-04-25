@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { Csdm3dUniverse } from "@/components/Csdm3dUniverse";
 
 type Stage = "foundation" | "crawl" | "walk" | "run" | "fly";
 type Domain = "foundational" | "design" | "build" | "technical-services" | "sell-consume";
@@ -402,57 +403,7 @@ export default function Home() {
 }
 
 function CsdmMap({ analysis }: { analysis: Analysis }) {
-  return (
-    <div className="relative h-[620px] overflow-hidden rounded-lg border border-slate-200 bg-[linear-gradient(145deg,#f8fbff_0%,#dbe8f7_58%,#c6d5ec_100%)] shadow-sm">
-      <div className="absolute left-5 top-5 z-10 rounded-lg border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
-        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">CSDM5 stage rail</p>
-        <div className="mt-2 flex gap-2">
-          {(Object.keys(stageLabels) as Stage[]).map((stage) => (
-            <span key={stage} className={`rounded-full px-3 py-1 text-xs font-black ${stage === analysis.globalStage ? "bg-[#0b7285] text-white" : "bg-slate-100 text-slate-500"}`}>
-              {stageLabels[stage]}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="absolute inset-x-10 bottom-8 top-20 [perspective:1200px]">
-        <div className="absolute inset-0 rounded-[18px] border border-white/70 bg-white/40 shadow-[0_40px_90px_rgba(30,64,100,0.18)] [transform:rotateX(58deg)_rotateZ(-8deg)] [transform-origin:center]">
-          <div className="absolute inset-8 rounded-xl border border-[#9fb6cf]/40 bg-[linear-gradient(90deg,rgba(15,118,110,0.12)_1px,transparent_1px),linear-gradient(0deg,rgba(15,118,110,0.10)_1px,transparent_1px)] bg-[size:64px_64px]" />
-          <div className="absolute left-[12%] top-[32%] h-1 w-[64%] rotate-[10deg] rounded-full bg-[#0b7285]/30" />
-          <div className="absolute left-[22%] top-[52%] h-1 w-[50%] -rotate-[16deg] rounded-full bg-[#0b7285]/24" />
-          <div className="absolute left-[45%] top-[28%] h-1 w-[32%] rotate-[38deg] rounded-full bg-[#0b7285]/22" />
-        </div>
-
-        {analysis.domains.map((domain) => {
-          const meta = domainMeta[domain.domain];
-          const height = 56 + domain.score * 1.1;
-          return (
-            <div key={domain.domain} className="absolute z-20 w-[190px]" style={{ left: meta.position.left, top: meta.position.top }}>
-              <div className="relative rounded-lg border border-white/70 bg-white px-4 pb-4 pt-3 shadow-[0_26px_50px_rgba(15,42,70,0.18)]">
-                <div className="absolute -top-8 left-1/2 w-16 -translate-x-1/2 rounded-t-md shadow-[0_16px_26px_rgba(15,42,70,0.18)]" style={{ height, background: `linear-gradient(180deg, ${meta.color}, #102a43)` }} />
-                <div className="relative z-10">
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{stageLabels[domain.stage]}</p>
-                  <p className="mt-1 text-sm font-black leading-5">{domain.label}</p>
-                  <div className="mt-3 flex items-end justify-between gap-3">
-                    <span className="text-3xl font-black">{domain.score}</span>
-                    <span className="rounded-full px-2 py-1 text-[10px] font-black text-white" style={{ background: meta.color }}>
-                      {domain.blockers} blockers
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="absolute bottom-5 left-5 right-5 z-30 grid gap-3 md:grid-cols-3">
-        <MapStat label="Global stage" value={stageLabels[analysis.globalStage]} />
-        <MapStat label="Progress to next" value={`${analysis.progressToNext}%`} />
-        <MapStat label="AI narrative" value="Prioritize weakest domain before scaling automation." compact />
-      </div>
-    </div>
-  );
+  return <Csdm3dUniverse analysis={analysis} />;
 }
 
 function Field({
@@ -514,15 +465,6 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
       <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
       <p className="mt-1 text-xl font-black">{value}</p>
-    </div>
-  );
-}
-
-function MapStat({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
-  return (
-    <div className="rounded-lg border border-white/70 bg-white/[0.88] p-3 shadow-sm backdrop-blur">
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className={`mt-1 font-black ${compact ? "text-sm" : "text-lg text-[#0b7285]"}`}>{value}</p>
     </div>
   );
 }

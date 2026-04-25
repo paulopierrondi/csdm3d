@@ -22,7 +22,7 @@ try {
   await waitForServer(baseUrl);
   const browser = await chromium.launch();
 
-  const screenshotPage = await browser.newPage({ viewport: { width: 1440, height: 1080 } });
+  const screenshotPage = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   await screenshotPage.goto(baseUrl, { waitUntil: "networkidle" });
   await screenshotPage.waitForTimeout(1000);
   await screenshotPage.screenshot({ path: path.join(outDir, "01-login.png"), fullPage: true });
@@ -30,7 +30,9 @@ try {
   await screenshotPage.getByText("ServiceNow instance", { exact: true }).waitFor();
   await screenshotPage.getByText("Load demo", { exact: true }).click();
   await screenshotPage.getByRole("heading", { name: "3D maturity map" }).waitFor();
-  await screenshotPage.screenshot({ path: path.join(outDir, "02-workspace-map.png"), fullPage: true });
+  await screenshotPage.waitForTimeout(1500);
+  await screenshotPage.screenshot({ path: path.join(outDir, "02-workspace-overview.png"), fullPage: true });
+  await screenshotPage.locator("[data-csdm3d-universe]").screenshot({ path: path.join(outDir, "03-csdm3d-universe.png") });
   await screenshotPage.locator("aside").last().screenshot({ path: path.join(outDir, "03-dashboard-insights.png") });
   await screenshotPage.close();
 
@@ -38,22 +40,24 @@ try {
   await mkdir(videoDir, { recursive: true });
 
   const videoContext = await browser.newContext({
-    viewport: { width: 1440, height: 1080 },
-    recordVideo: { dir: videoDir, size: { width: 1440, height: 1080 } },
+    viewport: { width: 1920, height: 1080 },
+    recordVideo: { dir: videoDir, size: { width: 1920, height: 1080 } },
   });
   const page = await videoContext.newPage();
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   await page.waitForTimeout(1000);
-  await caption(page, "CSDM maturity should not live in spreadsheets.");
+  await caption(page, "Not vibe coding. A ServiceNow API-based maturity product.");
   await page.getByRole("button", { name: "Enter workspace" }).click();
   await page.getByText("ServiceNow instance", { exact: true }).waitFor();
   await caption(page, "Login. Connect ServiceNow. Analyze CSDM5.");
   await page.getByText("Load demo", { exact: true }).click();
   await page.getByRole("heading", { name: "3D maturity map" }).waitFor();
-  await caption(page, "A 3D maturity map across the five CSDM domains.");
-  await caption(page, "AI-ready insights turn CMDB signals into next actions.");
-  await page.evaluate(() => window.scrollTo({ top: 420, behavior: "smooth" }));
-  await caption(page, "Open source for the ServiceNow community.");
+  await page.waitForTimeout(1200);
+  await caption(page, "A 3D maturity universe: domains, stages, blockers, and data flow.");
+  await caption(page, "AI turns CMDB signals into executive narrative and next actions.");
+  await caption(page, "Now Assist value starts with trusted, explainable platform data.");
+  await page.evaluate(() => window.scrollTo({ top: 360, behavior: "smooth" }));
+  await caption(page, "Open source for the ServiceNow community. Built by Paulo Pierrondi.");
   const video = page.video();
   await videoContext.close();
   if (video) {
@@ -110,5 +114,5 @@ async function caption(page, text) {
       ].join(";"),
     );
   }, text);
-  await page.waitForTimeout(2200);
+  await page.waitForTimeout(3800);
 }

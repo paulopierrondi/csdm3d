@@ -31,6 +31,7 @@ Avoid language that competes with ServiceNow:
 - Post text: `docs/linkedin-post-pt.md`
 - Video script: `docs/video-script-pt.md`
 - Screenshot 1: login and product promise
-- Screenshot 2: CSDM5 3D maturity map
-- Screenshot 3: AI insights dashboard
+- Screenshot 2: CSDM5 3D maturity universe
+- Screenshot 3: full workspace overview
+- Screenshot 4: AI insights dashboard
 - Video: product walkthrough with captions
