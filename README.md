@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CSDM3D
 
-## Getting Started
+CSDM3D is a public ServiceNow CMDB/CSDM5 maturity demo application.
 
-First, run the development server:
+It helps architects, TAEs, consultants, and platform teams turn CSDM5 maturity into a visual conversation:
+
+- Login-style protected workspace
+- ServiceNow instance connection
+- Lightweight CSDM5 domain analysis
+- 3D-style maturity map
+- AI-ready insights and dashboard
+- JSON report export
+
+![CSDM3D workspace](public/csdm3d-assets/02-workspace-map.png)
+
+Launch media:
+
+- [Demo video MP4](public/csdm3d-assets/csdm3d-demo.mp4)
+- [Login screenshot](public/csdm3d-assets/01-login.png)
+- [Dashboard screenshot](public/csdm3d-assets/03-dashboard-insights.png)
+
+## Positioning
+
+CSDM3D does not replace ServiceNow CMDB, Discovery, Service Mapping, Now Assist, or governance workflows.
+
+It complements the platform by making maturity easier to see, explain, and prioritize.
+
+## Quick Start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Use the demo login values already filled in, then click `Load demo`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Live ServiceNow Analysis
 
-## Learn More
+The live analysis form calls:
 
-To learn more about Next.js, take a look at the following resources:
+```text
+POST /api/servicenow/analyze
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+It uses the ServiceNow Table API to check lightweight table availability and record-count signals across CSDM5 domains.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This public build intentionally does not persist ServiceNow credentials. For a production deployment, add:
 
-## Deploy on Vercel
+- real authentication
+- encrypted credential storage
+- rate limiting
+- audit logging
+- stricter ServiceNow role guidance
+- customer data retention policy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Launch Assets
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+LinkedIn copy, launch hooks, and the video storyboard are in [`docs/`](docs/).
+
+Final screenshots and videos should be regenerated from the app before launch so the public post matches the shipped UI.
+
+## CSDM5 Domains
+
+- Foundational Data
+- Design
+- Build
+- Manage Technical Services
+- Sell / Consume Services
+
+## Personal Brand Narrative
+
+This project is meant to be shared as a community accelerator:
+
+> I wanted to make CSDM maturity visible, explainable, and easier to act on.
+
+AI is used as an interpretation layer:
+
+- explain the pattern
+- identify weak domains
+- prioritize next steps
+- translate technical maturity into executive language
+
+## License
+
+MIT
