@@ -2,16 +2,22 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import {
-  ChevronRight,
+  Activity,
+  ArrowUpRight,
+  Boxes,
   Command,
   Database,
   Download,
-  LayoutGrid,
+  Gauge,
+  Layers,
   LogOut,
-  Map as MapIcon,
+  Plus,
+  Search,
+  Settings,
   Sparkles,
   Stethoscope,
   TerminalSquare,
+  TrendingUp,
   X,
 } from "lucide-react";
 import { Csdm3dUniverse } from "@/components/Csdm3dUniverse";
@@ -54,7 +60,7 @@ type Analysis = {
   generatedAt: string;
 };
 
-type MobileTab = "map" | "agents" | "domains" | "report";
+type Tab = "overview" | "map" | "domains" | "agents" | "activity" | "settings";
 
 const stageLabels: Record<Stage, string> = {
   foundation: "Foundation",
@@ -65,14 +71,6 @@ const stageLabels: Record<Stage, string> = {
 };
 
 const domainOrder: Domain[] = ["foundational", "design", "build", "technical-services", "sell-consume"];
-
-const domainShort: Record<Domain, string> = {
-  foundational: "Foundation",
-  design: "Design",
-  build: "Build",
-  "technical-services": "Tech Services",
-  "sell-consume": "Sell / Consume",
-};
 
 const demoAnalysis: Analysis = {
   instanceName: "Demo Customer",
@@ -200,11 +198,16 @@ export default function Home() {
   const [instancePassword, setInstancePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [mobileTab, setMobileTab] = useState<MobileTab>("map");
+  const [tab, setTab] = useState<Tab>("overview");
   const [connectOpen, setConnectOpen] = useState(false);
 
   const ranked = useMemo(
     () => [...(analysis?.domains ?? [])].sort((a, b) => a.score - b.score),
+    [analysis],
+  );
+
+  const totalBlockers = useMemo(
+    () => (analysis?.domains ?? []).reduce((acc, d) => acc + d.blockers, 0),
     [analysis],
   );
 
@@ -229,7 +232,7 @@ export default function Home() {
       if (!response.ok) throw new Error(payload.error ?? "Unable to analyze this instance.");
       setAnalysis(payload.analysis);
       setConnectOpen(false);
-      setMobileTab("map");
+      setTab("overview");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
@@ -242,74 +245,34 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
-      {/* Top bar */}
-      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-[var(--border)] bg-[var(--bg)]/95 px-3 backdrop-blur md:px-4">
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-6 w-6 place-items-center rounded-md bg-[var(--accent)] text-[11px] font-semibold text-white">
-            3D
-          </div>
-          <div className="hidden items-baseline gap-2 sm:flex">
-            <span className="text-[13px] font-semibold tracking-tight">CSDM3D</span>
-            <span className="text-[11px] text-[var(--text-3)]">/ {analysis?.csdmVersion ?? "CSDM 5.0"}</span>
-          </div>
-          {analysis && (
-            <span className="ml-1 hidden items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1 text-[11px] text-[var(--text-2)] md:flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
-              {analysis.instanceName}
-            </span>
-          )}
-        </div>
+    <main className="relative z-10 min-h-screen text-[var(--text)]">
+      <TopBar
+        instanceName={analysis?.instanceName}
+        onConnect={() => setConnectOpen(true)}
+        onDemo={() => setAnalysis(demoAnalysis)}
+        onSignOut={() => setLoggedIn(false)}
+      />
+      <Tabs current={tab} onChange={setTab} />
 
-        <div className="flex items-center gap-1.5">
-          <KeyHint />
-          <button
-            onClick={() => setAnalysis(demoAnalysis)}
-            className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2.5 py-1.5 text-[12px] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-          >
-            Demo data
-          </button>
-          <button
-            onClick={() => setConnectOpen(true)}
-            className="rounded-md bg-[var(--accent)] px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-[var(--accent-hover)]"
-          >
-            Connect
-          </button>
-          <button
-            onClick={() => setLoggedIn(false)}
-            aria-label="Sign out"
-            className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] p-1.5 text-[var(--text-2)] hover:text-[var(--text)]"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </header>
-
-      {/* Layout: 3 columns on desktop, single column + bottom tabs on mobile */}
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_340px]">
-        {/* Sidebar — desktop only */}
-        <aside className="hidden border-r border-[var(--border)] lg:block">
-          <Sidebar analysis={analysis} ranked={ranked} onPickDomain={() => {}} />
-        </aside>
-
-        {/* Main canvas */}
-        <section className="min-h-[calc(100vh-3rem-3.25rem)] lg:min-h-[calc(100vh-3rem)]">
-          <MainCanvas analysis={analysis} mobileTab={mobileTab} ranked={ranked} />
-        </section>
-
-        {/* Right inspector — desktop only */}
-        <aside className="hidden border-l border-[var(--border)] lg:block">
-          <Inspector analysis={analysis} ranked={ranked} />
-        </aside>
+      <div className="mx-auto max-w-[1400px] px-4 pb-24 pt-6 md:px-6 md:pb-10">
+        {tab === "overview" && (
+          <Overview
+            analysis={analysis}
+            ranked={ranked}
+            totalBlockers={totalBlockers}
+            onConnect={() => setConnectOpen(true)}
+            onDemo={() => setAnalysis(demoAnalysis)}
+            onJump={(t) => setTab(t)}
+          />
+        )}
+        {tab === "map" && <MapTab analysis={analysis} />}
+        {tab === "domains" && <DomainsTab analysis={analysis} />}
+        {tab === "agents" && <AgentsTab analysis={analysis} />}
+        {tab === "activity" && <ActivityTab analysis={analysis} />}
+        {tab === "settings" && <SettingsTab analysis={analysis} onDownload={() => downloadReport(analysis)} />}
       </div>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-4 border-t border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur lg:hidden">
-        <TabButton active={mobileTab === "map"} onClick={() => setMobileTab("map")} icon={<MapIcon className="h-4 w-4" />} label="Map" />
-        <TabButton active={mobileTab === "agents"} onClick={() => setMobileTab("agents")} icon={<Sparkles className="h-4 w-4" />} label="Agents" />
-        <TabButton active={mobileTab === "domains"} onClick={() => setMobileTab("domains")} icon={<LayoutGrid className="h-4 w-4" />} label="Domains" />
-        <TabButton active={mobileTab === "report"} onClick={() => setMobileTab("report")} icon={<Download className="h-4 w-4" />} label="Report" />
-      </nav>
+      <MobileTabBar current={tab} onChange={setTab} />
 
       {connectOpen && (
         <ConnectModal
@@ -329,6 +292,574 @@ export default function Home() {
   );
 }
 
+/* ──────────────────────────── Top bar ──────────────────────────── */
+
+function TopBar({
+  instanceName,
+  onConnect,
+  onDemo,
+  onSignOut,
+}: {
+  instanceName?: string;
+  onConnect: () => void;
+  onDemo: () => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur">
+      <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 md:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          {/* Triangle mark */}
+          <span className="flex items-center gap-2">
+            <svg width="22" height="22" viewBox="0 0 76 65" fill="none" aria-hidden>
+              <path d="M37.527.5L75.054 65H0L37.527.5z" fill="currentColor" />
+            </svg>
+          </span>
+          <Slash />
+          <div className="flex items-center gap-1.5">
+            <Avatar text="PP" size={20} bg="#5e6ad2" />
+            <span className="hidden text-[13px] font-medium md:inline">paulo</span>
+          </div>
+          <Slash />
+          <button className="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-[var(--bg-elev-1)]">
+            <span className="truncate text-[13px] font-medium">CSDM3D</span>
+            <span className="hidden rounded border border-[var(--border)] bg-[var(--bg-elev-2)] px-1 py-px text-[9.5px] font-medium uppercase tracking-wider text-[var(--text-2)] sm:inline">
+              Pro
+            </span>
+            <ChevronUpDown />
+          </button>
+          {instanceName && (
+            <>
+              <Slash />
+              <span className="hidden items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1 text-[11.5px] text-[var(--text-2)] md:inline-flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)] shadow-[0_0_8px_var(--success)]" />
+                {instanceName}
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <SearchHint />
+          <button
+            onClick={onDemo}
+            className="hidden rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2.5 py-1.5 text-[12.5px] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text)] md:inline-flex"
+          >
+            Load demo
+          </button>
+          <button
+            onClick={onConnect}
+            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--text)] px-3 py-1.5 text-[12.5px] font-medium text-black hover:bg-white"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Connect instance
+          </button>
+          <button
+            onClick={onSignOut}
+            aria-label="Sign out"
+            className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] p-1.5 text-[var(--text-2)] hover:text-[var(--text)]"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Tabs({ current, onChange }: { current: Tab; onChange: (t: Tab) => void }) {
+  const items: Array<{ id: Tab; label: string }> = [
+    { id: "overview", label: "Overview" },
+    { id: "map", label: "Map" },
+    { id: "domains", label: "Domains" },
+    { id: "agents", label: "Agents" },
+    { id: "activity", label: "Activity" },
+    { id: "settings", label: "Settings" },
+  ];
+  return (
+    <nav className="sticky top-14 z-30 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur">
+      <div className="mx-auto flex max-w-[1400px] items-center gap-1 overflow-x-auto px-2 md:px-4">
+        {items.map((item) => {
+          const active = current === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onChange(item.id)}
+              className={`relative whitespace-nowrap px-3 py-3 text-[13px] transition-colors ${
+                active ? "text-[var(--text)]" : "text-[var(--text-2)] hover:text-[var(--text)]"
+              }`}
+            >
+              {item.label}
+              {active && <span className="absolute inset-x-3 -bottom-px h-px bg-[var(--text)]" />}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+/* ──────────────────────────── Overview tab ──────────────────────────── */
+
+function Overview({
+  analysis,
+  ranked,
+  totalBlockers,
+  onConnect,
+  onDemo,
+  onJump,
+}: {
+  analysis: Analysis | null;
+  ranked: DomainScore[];
+  totalBlockers: number;
+  onConnect: () => void;
+  onDemo: () => void;
+  onJump: (t: Tab) => void;
+}) {
+  if (!analysis) {
+    return <EmptyState onConnect={onConnect} onDemo={onDemo} />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Page heading */}
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-[24px] font-semibold tracking-tight md:text-[28px]">
+            {analysis.instanceName}
+          </h1>
+          <p className="text-[13px] text-[var(--text-2)]">
+            {analysis.csdmVersion} · {stageLabels[analysis.globalStage]} maturity ·{" "}
+            <span className="font-mono text-[var(--text-3)]">{analysis.instanceUrl}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onJump("map")}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2.5 py-1.5 text-[12px] hover:border-[var(--border-strong)]"
+          >
+            View map <ArrowUpRight className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => onJump("settings")}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2.5 py-1.5 text-[12px] hover:border-[var(--border-strong)]"
+          >
+            <Download className="h-3.5 w-3.5" /> Export
+          </button>
+        </div>
+      </div>
+
+      {/* Metric tiles */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <MetricTile
+          icon={<Gauge className="h-3.5 w-3.5" />}
+          label="Overall score"
+          value={String(analysis.overallScore)}
+          unit="/100"
+          delta={`+${analysis.progressToNext}% to next`}
+          color={scoreColor(analysis.overallScore)}
+        />
+        <MetricTile
+          icon={<TrendingUp className="h-3.5 w-3.5" />}
+          label="Maturity stage"
+          value={stageLabels[analysis.globalStage]}
+          unit=""
+          delta="CSDM 5.0 ladder"
+        />
+        <MetricTile
+          icon={<Layers className="h-3.5 w-3.5" />}
+          label="Domains scored"
+          value={String(analysis.domains.length)}
+          unit="/5"
+          delta="Anchor table probe"
+        />
+        <MetricTile
+          icon={<Boxes className="h-3.5 w-3.5" />}
+          label="Open blockers"
+          value={String(totalBlockers)}
+          unit=""
+          delta={`${ranked[0]?.label ?? "—"} weakest`}
+          color="var(--danger)"
+        />
+      </div>
+
+      {/* Bento row 1: 3D + activity */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <Card className="lg:col-span-2" title="Maturity universe" subtitle="3D map of CSDM 5.0 anchor tables">
+          <div className="-mx-px -mb-px overflow-hidden rounded-b-[var(--radius)]">
+            <Csdm3dUniverse analysis={analysis} />
+          </div>
+        </Card>
+        <Card title="Activity" subtitle="Last 24h" actions={<button className="text-[11.5px] text-[var(--text-2)] hover:text-[var(--text)]" onClick={() => onJump("activity")}>View all</button>}>
+          <ActivityFeed analysis={analysis} />
+        </Card>
+      </div>
+
+      {/* Bento row 2: domains + agents */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <Card className="lg:col-span-2" title="Domain scores" subtitle="Sorted by lowest score">
+          <DomainTable domains={ranked} />
+        </Card>
+        <Card title="Specialist agents" subtitle={`${analysis.agents.length} active`}>
+          <div className="space-y-2.5 p-3">
+            {analysis.agents.map((agent) => (
+              <AgentMini key={agent.id} agent={agent} />
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Bento row 3: insights */}
+      <Card title="Top insights" subtitle="From the agent panel">
+        <div className="grid grid-cols-1 gap-px bg-[var(--border)] md:grid-cols-2">
+          {analysis.agents.flatMap((a) =>
+            a.insights.slice(0, 2).map((insight) => (
+              <div key={`${a.id}-${insight.title}`} className="bg-[var(--bg-elev-1)] p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <Avatar text={a.avatar} size={18} bg={a.color} />
+                  <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)]">
+                    {a.role}
+                  </span>
+                </div>
+                <p className="text-[13px] font-medium">{insight.title}</p>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--text-2)]">{insight.detail}</p>
+              </div>
+            )),
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ──────────────────────────── Tabs ──────────────────────────── */
+
+function MapTab({ analysis }: { analysis: Analysis | null }) {
+  if (!analysis) return <EmptyState />;
+  return (
+    <Card title="Maturity universe" subtitle={`${analysis.instanceName} · ${stageLabels[analysis.globalStage]}`}>
+      <div className="-mx-px -mb-px overflow-hidden rounded-b-[var(--radius)]">
+        <Csdm3dUniverse analysis={analysis} />
+      </div>
+    </Card>
+  );
+}
+
+function DomainsTab({ analysis }: { analysis: Analysis | null }) {
+  if (!analysis) return <EmptyState />;
+  return (
+    <Card title="CSDM 5.0 domains" subtitle="Anchor-table probe + score">
+      <DomainTable domains={domainOrder.map((id) => analysis.domains.find((d) => d.domain === id)!).filter(Boolean)} />
+    </Card>
+  );
+}
+
+function AgentsTab({ analysis }: { analysis: Analysis | null }) {
+  if (!analysis) return <EmptyState />;
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {analysis.agents.map((agent) => (
+        <AgentCard key={agent.id} agent={agent} />
+      ))}
+    </div>
+  );
+}
+
+function ActivityTab({ analysis }: { analysis: Analysis | null }) {
+  if (!analysis) return <EmptyState />;
+  return (
+    <Card title="Activity" subtitle="Latest probes and agent reasoning">
+      <ActivityFeed analysis={analysis} extended />
+    </Card>
+  );
+}
+
+function SettingsTab({ analysis, onDownload }: { analysis: Analysis | null; onDownload: () => void }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <Card title="Export" subtitle="Audit-friendly JSON snapshot">
+        <div className="p-4">
+          <button
+            onClick={onDownload}
+            disabled={!analysis}
+            className="flex w-full items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-3 py-2.5 text-[13px] hover:border-[var(--border-strong)] disabled:opacity-50"
+          >
+            <span>
+              <span className="block font-medium">Download report</span>
+              <span className="block text-[11px] text-[var(--text-3)]">domains · scores · tables · agents</span>
+            </span>
+            <Download className="h-4 w-4 text-[var(--text-2)]" />
+          </button>
+        </div>
+      </Card>
+      <Card title="Connection" subtitle="ServiceNow Table API probe">
+        <div className="p-4 text-[12.5px] text-[var(--text-2)]">
+          <p>Credentials are never persisted server-side — they live only in the request body and Basic-auth header per call.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11.5px]">
+            <KV k="Instance" v={analysis?.instanceUrl ?? "—"} />
+            <KV k="Generated" v={analysis ? new Date(analysis.generatedAt).toLocaleString() : "—"} />
+            <KV k="CSDM" v={analysis?.csdmVersion ?? "—"} />
+            <KV k="Stage" v={analysis ? stageLabels[analysis.globalStage] : "—"} />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ──────────────────────────── Building blocks ──────────────────────────── */
+
+function Card({
+  title,
+  subtitle,
+  actions,
+  children,
+  className = "",
+}: {
+  title?: string;
+  subtitle?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-elev-1)] ${className}`}
+    >
+      {(title || subtitle) && (
+        <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+          <div>
+            {title && <h2 className="text-[13.5px] font-semibold tracking-tight">{title}</h2>}
+            {subtitle && <p className="mt-0.5 text-[11.5px] text-[var(--text-3)]">{subtitle}</p>}
+          </div>
+          {actions}
+        </header>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function MetricTile({
+  icon,
+  label,
+  value,
+  unit,
+  delta,
+  color = "var(--text)",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  unit: string;
+  delta: string;
+  color?: string;
+}) {
+  return (
+    <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-elev-1)] p-4 transition-colors hover:border-[var(--border-strong)]">
+      <div className="flex items-center gap-1.5 text-[var(--text-3)]">
+        {icon}
+        <span className="text-[11px] font-medium uppercase tracking-wider">{label}</span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-1">
+        <span className="font-mono text-[28px] font-semibold leading-none tracking-tight tabular-nums" style={{ color }}>
+          {value}
+        </span>
+        {unit && <span className="font-mono text-[13px] text-[var(--text-3)]">{unit}</span>}
+      </div>
+      <p className="mt-2 text-[11.5px] text-[var(--text-2)]">{delta}</p>
+    </div>
+  );
+}
+
+function DomainTable({ domains }: { domains: DomainScore[] }) {
+  return (
+    <div>
+      {domains.map((d, i) => (
+        <div
+          key={d.domain}
+          className={`grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 md:grid-cols-[1.4fr_120px_140px_80px_60px] ${
+            i !== 0 ? "border-t border-[var(--border)]" : ""
+          }`}
+        >
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium">{d.label}</p>
+            <p className="mt-0.5 hidden truncate text-[11.5px] text-[var(--text-3)] md:block">{d.evidence}</p>
+          </div>
+          <div className="hidden md:block">
+            <ScoreBar score={d.score} />
+          </div>
+          <div className="hidden text-[11.5px] text-[var(--text-2)] md:block">
+            <span className="rounded border border-[var(--border)] bg-[var(--bg-elev-2)] px-1.5 py-0.5">
+              {stageLabels[d.stage]}
+            </span>
+          </div>
+          <div className="hidden font-mono text-[11.5px] text-[var(--text-2)] md:block">
+            {d.blockers} blk
+          </div>
+          <div className="text-right">
+            <ScorePill score={d.score} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ScoreBar({ score }: { score: number }) {
+  return (
+    <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--bg-elev-3)]">
+      <div className="h-full rounded-full" style={{ width: `${score}%`, background: scoreColor(score) }} />
+    </div>
+  );
+}
+
+function ScorePill({ score }: { score: number }) {
+  const c = scoreColor(score);
+  return (
+    <span
+      className="inline-flex min-w-[42px] justify-center rounded font-mono text-[11.5px] font-semibold tabular-nums"
+      style={{
+        background: `${c}1a`,
+        color: c,
+        padding: "2px 6px",
+      }}
+    >
+      {score}
+    </span>
+  );
+}
+
+function AgentCard({ agent }: { agent: Agent }) {
+  return (
+    <Card>
+      <header className="flex items-center gap-2.5 border-b border-[var(--border)] px-4 py-3">
+        <Avatar text={agent.avatar} size={28} bg={agent.color} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13.5px] font-semibold tracking-tight">{agent.name}</p>
+          <p className="truncate text-[11.5px] text-[var(--text-2)]">{agent.role}</p>
+        </div>
+        {agent.id === "itom-doctor" ? (
+          <Stethoscope className="h-3.5 w-3.5 text-[var(--text-3)]" />
+        ) : (
+          <TerminalSquare className="h-3.5 w-3.5 text-[var(--text-3)]" />
+        )}
+      </header>
+      <div className="px-4 py-3">
+        <p className="text-[11.5px] text-[var(--text-3)]">{agent.tagline}</p>
+        <ul className="mt-3 space-y-2">
+          {agent.insights.map((insight) => (
+            <li
+              key={insight.title}
+              className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] p-3"
+            >
+              <p className="text-[12.5px] font-medium">{insight.title}</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-2)]">{insight.detail}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
+  );
+}
+
+function AgentMini({ agent }: { agent: Agent }) {
+  return (
+    <div className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] p-3">
+      <div className="flex items-center gap-2.5">
+        <Avatar text={agent.avatar} size={22} bg={agent.color} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[12.5px] font-medium">{agent.name}</p>
+          <p className="truncate text-[11px] text-[var(--text-3)]">{agent.role}</p>
+        </div>
+      </div>
+      <p className="mt-2 line-clamp-2 text-[11.5px] leading-relaxed text-[var(--text-2)]">
+        {agent.insights[0]?.detail}
+      </p>
+    </div>
+  );
+}
+
+function ActivityFeed({ analysis, extended = false }: { analysis: Analysis; extended?: boolean }) {
+  const items = [
+    {
+      icon: <Sparkles className="h-3.5 w-3.5" />,
+      title: "Analysis generated",
+      detail: `${analysis.csdmVersion} · score ${analysis.overallScore}/100`,
+      time: "now",
+    },
+    ...analysis.agents.map((a) => ({
+      icon: <Avatar text={a.avatar} size={16} bg={a.color} />,
+      title: `${a.name} produced ${a.insights.length} insights`,
+      detail: a.tagline,
+      time: "1m",
+    })),
+    ...analysis.domains
+      .slice()
+      .sort((a, b) => a.score - b.score)
+      .slice(0, extended ? 5 : 3)
+      .map((d) => ({
+        icon: <Database className="h-3.5 w-3.5" />,
+        title: `${d.label} scored ${d.score}`,
+        detail: `Stage ${stageLabels[d.stage]} · ${d.blockers} blockers`,
+        time: "2m",
+      })),
+  ];
+
+  return (
+    <ul className="divide-y divide-[var(--border)]">
+      {items.map((item, idx) => (
+        <li key={idx} className="flex items-start gap-3 px-4 py-3">
+          <div className="mt-0.5 grid h-6 w-6 place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-2)]">
+            {item.icon}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12.5px] font-medium">{item.title}</p>
+            <p className="truncate text-[11.5px] text-[var(--text-3)]">{item.detail}</p>
+          </div>
+          <span className="font-mono text-[10.5px] text-[var(--text-3)]">{item.time}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function EmptyState({ onConnect, onDemo }: { onConnect?: () => void; onDemo?: () => void }) {
+  return (
+    <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--bg-elev-1)] p-8 text-center md:p-16">
+      <div className="mx-auto grid h-10 w-10 place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)]">
+        <Activity className="h-4 w-4 text-[var(--text-2)]" />
+      </div>
+      <h2 className="mt-4 text-[18px] font-semibold tracking-tight">No analysis yet</h2>
+      <p className="mx-auto mt-1.5 max-w-[420px] text-[13px] text-[var(--text-2)]">
+        Connect a ServiceNow instance, or load demo data to explore the CSDM 5.0 maturity dashboard.
+      </p>
+      {(onConnect || onDemo) && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          {onConnect && (
+            <button
+              onClick={onConnect}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--text)] px-3 py-1.5 text-[12.5px] font-medium text-black hover:bg-white"
+            >
+              <Plus className="h-3.5 w-3.5" /> Connect instance
+            </button>
+          )}
+          {onDemo && (
+            <button
+              onClick={onDemo}
+              className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-3 py-1.5 text-[12.5px] hover:border-[var(--border-strong)]"
+            >
+              Load demo data
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────── Login + modal ──────────────────────────── */
+
 function LoginScreen({
   email,
   password,
@@ -343,18 +874,18 @@ function LoginScreen({
   onSubmit: () => void;
 }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[var(--bg)] px-4 text-[var(--text)]">
+    <main className="relative z-10 grid min-h-screen place-items-center px-4 text-[var(--text)]">
       <div className="w-full max-w-[380px]">
         <div className="mb-8 flex items-center gap-2.5">
-          <div className="grid h-7 w-7 place-items-center rounded-md bg-[var(--accent)] text-[12px] font-semibold text-white">3D</div>
-          <span className="text-[14px] font-semibold tracking-tight">CSDM3D</span>
+          <svg width="24" height="24" viewBox="0 0 76 65" fill="none" aria-hidden>
+            <path d="M37.527.5L75.054 65H0L37.527.5z" fill="currentColor" />
+          </svg>
+          <span className="text-[15px] font-semibold tracking-tight">CSDM3D</span>
         </div>
-
-        <h1 className="text-[22px] font-semibold leading-tight tracking-tight">Sign in to your workspace</h1>
-        <p className="mt-1.5 text-[13px] text-[var(--text-2)]">
-          CSDM 5.0 maturity assessment with two specialist agents.
+        <h1 className="text-[24px] font-semibold leading-tight tracking-tight">Sign in to your workspace</h1>
+        <p className="mt-2 text-[13px] text-[var(--text-2)]">
+          CSDM 5.0 maturity dashboard with two specialist agents.
         </p>
-
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -366,202 +897,16 @@ function LoginScreen({
           <Field label="Password" value={password} onChange={setPassword} type="password" />
           <button
             type="submit"
-            className="mt-2 w-full rounded-md bg-[var(--accent)] px-3 py-2 text-[13px] font-medium text-white hover:bg-[var(--accent-hover)]"
+            className="mt-2 w-full rounded-md bg-[var(--text)] px-3 py-2.5 text-[13px] font-medium text-black hover:bg-white"
           >
             Continue
           </button>
         </form>
-
         <p className="mt-6 text-[11px] text-[var(--text-3)]">
           Public demo · no credentials are persisted server-side.
         </p>
       </div>
     </main>
-  );
-}
-
-function Sidebar({
-  analysis,
-  ranked,
-}: {
-  analysis: Analysis | null;
-  ranked: DomainScore[];
-  onPickDomain: (d: Domain) => void;
-}) {
-  return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-[var(--border)] p-4">
-        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">Workspace</p>
-        <h2 className="mt-1 text-[14px] font-semibold tracking-tight">CSDM 5.0 Assessment</h2>
-        {analysis ? (
-          <div className="mt-3 grid grid-cols-3 gap-1.5">
-            <Mini label="Score" value={String(analysis.overallScore)} />
-            <Mini label="Stage" value={stageLabels[analysis.globalStage]} />
-            <Mini label="Next" value={`${analysis.progressToNext}%`} />
-          </div>
-        ) : (
-          <p className="mt-3 text-[12px] text-[var(--text-2)]">Run an analysis or load demo data.</p>
-        )}
-      </div>
-
-      <SidebarSection title="Agents">
-        {analysis?.agents?.map((agent) => (
-          <SidebarRow key={agent.id} avatar={agent.avatar} avatarColor={agent.color} title={agent.name} subtitle={agent.role} />
-        )) ?? <Empty text="No analysis" />}
-      </SidebarSection>
-
-      <SidebarSection title="Priorities">
-        {ranked.length > 0 ? (
-          ranked.slice(0, 3).map((domain) => (
-            <SidebarRow
-              key={domain.domain}
-              icon={<ChevronRight className="h-3.5 w-3.5 text-[var(--text-3)]" />}
-              title={domainShort[domain.domain]}
-              subtitle={`${domain.blockers} blockers`}
-              right={<ScorePill score={domain.score} />}
-            />
-          ))
-        ) : (
-          <Empty text="No priorities" />
-        )}
-      </SidebarSection>
-
-      <div className="mt-auto border-t border-[var(--border)] p-3 text-[11px] text-[var(--text-3)]">
-        <div className="flex items-center gap-1.5">
-          <Database className="h-3.5 w-3.5" />
-          <span>ServiceNow Table API</span>
-        </div>
-        <p className="mt-1 leading-relaxed">Lightweight CSDM 5.0 anchor-table probe. Credentials stay in memory.</p>
-      </div>
-    </div>
-  );
-}
-
-function MainCanvas({ analysis, mobileTab, ranked }: { analysis: Analysis | null; mobileTab: MobileTab; ranked: DomainScore[] }) {
-  if (!analysis) {
-    return (
-      <div className="grid h-full min-h-[calc(100vh-7rem)] place-items-center px-4 lg:min-h-[calc(100vh-3rem)]">
-        <div className="max-w-[420px] text-center">
-          <div className="mx-auto grid h-10 w-10 place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)]">
-            <MapIcon className="h-4 w-4 text-[var(--text-2)]" />
-          </div>
-          <h2 className="mt-4 text-[18px] font-semibold tracking-tight">No analysis yet</h2>
-          <p className="mt-1.5 text-[13px] text-[var(--text-2)]">
-            Connect a ServiceNow instance, or load the demo to explore the CSDM 5.0 maturity universe.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Mobile: render the active tab. Desktop: render full canvas (map + dock).
-  return (
-    <div className="px-3 pb-20 pt-3 md:px-4 md:pb-4">
-      {/* MAP tab on mobile + full on desktop */}
-      <div className={mobileTab === "map" ? "block" : "hidden lg:block"}>
-        <CanvasHeader analysis={analysis} />
-        <Csdm3dUniverse analysis={analysis} />
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {ranked.slice(0, 3).map((domain) => (
-            <PriorityCard key={domain.domain} domain={domain} />
-          ))}
-        </div>
-      </div>
-
-      {/* AGENTS tab on mobile */}
-      <div className={mobileTab === "agents" ? "block lg:hidden" : "hidden"}>
-        <PanelHeading title="Specialist agents" subtitle={`${analysis.agents.length} active for this assessment`} />
-        <div className="mt-3 space-y-3">
-          {analysis.agents.map((agent) => (
-            <AgentCard key={agent.id} agent={agent} />
-          ))}
-        </div>
-      </div>
-
-      {/* DOMAINS tab on mobile */}
-      <div className={mobileTab === "domains" ? "block lg:hidden" : "hidden"}>
-        <PanelHeading title="CSDM 5.0 domains" subtitle="Score per anchor-table probe" />
-        <div className="mt-3 space-y-2">
-          {domainOrder.map((id) => {
-            const d = analysis.domains.find((x) => x.domain === id);
-            return d ? <DomainRow key={id} domain={d} /> : null;
-          })}
-        </div>
-      </div>
-
-      {/* REPORT tab on mobile */}
-      <div className={mobileTab === "report" ? "block lg:hidden" : "hidden"}>
-        <PanelHeading title="Export" subtitle="Audit-friendly JSON snapshot" />
-        <button
-          onClick={() => downloadReport(analysis)}
-          className="mt-3 flex w-full items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-3 py-3 text-[13px] hover:border-[var(--border-strong)]"
-        >
-          <span>
-            <span className="block font-medium">Download JSON report</span>
-            <span className="text-[11px] text-[var(--text-3)]">Domains, scores, tables, agents</span>
-          </span>
-          <Download className="h-4 w-4 text-[var(--text-2)]" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function CanvasHeader({ analysis }: { analysis: Analysis }) {
-  return (
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <div>
-        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">Maturity universe</p>
-        <h2 className="mt-0.5 text-[16px] font-semibold tracking-tight md:text-[18px]">
-          {analysis.instanceName} <span className="text-[var(--text-3)]">/ {stageLabels[analysis.globalStage]}</span>
-        </h2>
-      </div>
-      <div className="flex items-center gap-2 text-[11px] text-[var(--text-2)]">
-        <span className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1">
-          Score <span className="ml-1 text-[var(--text)]">{analysis.overallScore}</span>
-        </span>
-        <span className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1">
-          Next <span className="ml-1 text-[var(--text)]">{analysis.progressToNext}%</span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function Inspector({ analysis, ranked }: { analysis: Analysis | null; ranked: DomainScore[] }) {
-  if (!analysis) {
-    return (
-      <div className="p-4">
-        <Empty text="Run an analysis to populate the inspector." />
-      </div>
-    );
-  }
-  return (
-    <div className="flex h-full flex-col">
-      <SidebarSection title="Specialist agents">
-        {analysis.agents.map((agent) => (
-          <AgentCard key={agent.id} agent={agent} compact />
-        ))}
-      </SidebarSection>
-
-      <SidebarSection title="Domains">
-        {domainOrder.map((id) => {
-          const d = analysis.domains.find((x) => x.domain === id);
-          return d ? <DomainRow key={id} domain={d} compact /> : null;
-        })}
-      </SidebarSection>
-
-      <div className="border-t border-[var(--border)] p-3">
-        <button
-          onClick={() => downloadReport(analysis)}
-          className="flex w-full items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-3 py-2 text-[12px] hover:border-[var(--border-strong)]"
-        >
-          <span>Download JSON report</span>
-          <Download className="h-3.5 w-3.5 text-[var(--text-2)]" />
-        </button>
-        <p className="mt-2 text-[10px] text-[var(--text-3)]">{ranked.length} domains · {analysis.csdmVersion}</p>
-      </div>
-    </div>
   );
 }
 
@@ -589,12 +934,12 @@ function ConnectModal({
   onSubmit: (e: FormEvent) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-[440px] rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elev-1)] shadow-2xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-[460px] overflow-hidden rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--bg-elev-1)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">ServiceNow</p>
-            <h3 className="text-[14px] font-semibold tracking-tight">Connect instance</h3>
+            <p className="text-[10.5px] font-medium uppercase tracking-wider text-[var(--text-3)]">ServiceNow</p>
+            <h3 className="mt-0.5 text-[14px] font-semibold tracking-tight">Connect instance</h3>
           </div>
           <button onClick={onClose} className="rounded-md p-1 text-[var(--text-2)] hover:bg-[var(--bg-elev-2)]" aria-label="Close">
             <X className="h-4 w-4" />
@@ -612,7 +957,7 @@ function ConnectModal({
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-[var(--accent)] px-3 py-2 text-[12px] font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-60"
+              className="rounded-md bg-[var(--text)] px-3 py-2 text-[12.5px] font-medium text-black hover:bg-white disabled:opacity-60"
             >
               {loading ? "Analyzing…" : "Run analysis"}
             </button>
@@ -622,6 +967,8 @@ function ConnectModal({
     </div>
   );
 }
+
+/* ──────────────────────────── Atoms ──────────────────────────── */
 
 function Field({
   label,
@@ -644,169 +991,98 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         type={type}
-        className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-2.5 py-2 text-[13px] text-[var(--text)] placeholder:text-[var(--text-3)] focus:border-[var(--accent)]"
+        className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-2.5 py-2 text-[13px] text-[var(--text)] placeholder:text-[var(--text-3)] focus:border-[var(--border-focus)]"
       />
     </label>
   );
 }
 
-function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
+function KV({ k, v }: { k: string; v: string }) {
   return (
-    <section className="border-b border-[var(--border)] p-3">
-      <p className="px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">{title}</p>
-      <div className="mt-2 space-y-1.5">{children}</div>
-    </section>
-  );
-}
-
-function SidebarRow({
-  avatar,
-  avatarColor,
-  icon,
-  title,
-  subtitle,
-  right,
-}: {
-  avatar?: string;
-  avatarColor?: string;
-  icon?: React.ReactNode;
-  title: string;
-  subtitle?: string;
-  right?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-[var(--bg-elev-1)]">
-      {avatar ? (
-        <div className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold text-white" style={{ background: avatarColor }}>
-          {avatar}
-        </div>
-      ) : (
-        icon
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[12.5px] font-medium">{title}</p>
-        {subtitle && <p className="truncate text-[11px] text-[var(--text-3)]">{subtitle}</p>}
-      </div>
-      {right}
+    <div className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-2.5 py-1.5">
+      <p className="text-[10px] uppercase tracking-wider text-[var(--text-3)]">{k}</p>
+      <p className="mt-0.5 truncate font-mono text-[12px] text-[var(--text)]">{v}</p>
     </div>
   );
 }
 
-function AgentCard({ agent, compact }: { agent: Agent; compact?: boolean }) {
-  return (
-    <article className={`rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] ${compact ? "p-3" : "p-4"}`}>
-      <header className="flex items-center gap-2.5">
-        <div className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-semibold text-white" style={{ background: agent.color }}>
-          {agent.avatar}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold tracking-tight">{agent.name}</p>
-          <p className="truncate text-[11px] text-[var(--text-2)]">{agent.role}</p>
-        </div>
-        {agent.id === "itom-doctor" ? (
-          <Stethoscope className="h-3.5 w-3.5 text-[var(--text-3)]" />
-        ) : (
-          <TerminalSquare className="h-3.5 w-3.5 text-[var(--text-3)]" />
-        )}
-      </header>
-      <p className="mt-2 text-[11px] text-[var(--text-3)]">{agent.tagline}</p>
-      <ul className="mt-3 space-y-2.5">
-        {agent.insights.map((insight) => (
-          <li key={insight.title} className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-2.5">
-            <p className="text-[12px] font-medium">{insight.title}</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-2)]">{insight.detail}</p>
-          </li>
-        ))}
-      </ul>
-    </article>
-  );
-}
-
-function DomainRow({ domain, compact }: { domain: DomainScore; compact?: boolean }) {
-  return (
-    <div className={`rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] ${compact ? "p-2.5" : "p-3"}`}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[12.5px] font-medium">{domain.label}</p>
-        <ScorePill score={domain.score} />
-      </div>
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--bg-elev-3)]">
-        <div className="h-full rounded-full" style={{ width: `${domain.score}%`, background: scoreColor(domain.score) }} />
-      </div>
-      <div className="mt-2 flex items-center justify-between text-[10.5px] text-[var(--text-3)]">
-        <span>{stageLabels[domain.stage]}</span>
-        <span>{domain.blockers} blockers</span>
-      </div>
-    </div>
-  );
-}
-
-function PriorityCard({ domain }: { domain: DomainScore }) {
-  return (
-    <div className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] p-3">
-      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--danger)]">Priority · {domain.label}</p>
-      <p className="mt-1.5 text-[12px] font-medium">{domain.blockers} blockers to investigate</p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-2)]">{domain.evidence}</p>
-    </div>
-  );
-}
-
-function PanelHeading({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div>
-      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">CSDM3D</p>
-      <h2 className="mt-0.5 text-[16px] font-semibold tracking-tight">{title}</h2>
-      <p className="text-[12px] text-[var(--text-2)]">{subtitle}</p>
-    </div>
-  );
-}
-
-function ScorePill({ score }: { score: number }) {
+function Avatar({ text, size, bg }: { text: string; size: number; bg: string }) {
   return (
     <span
-      className="rounded px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums"
+      className="inline-grid place-items-center rounded-full text-white"
       style={{
-        background: `${scoreColor(score)}1f`,
-        color: scoreColor(score),
+        width: size,
+        height: size,
+        background: bg,
+        fontSize: Math.max(8, size * 0.45),
+        fontWeight: 600,
       }}
     >
-      {score}
+      {text}
     </span>
   );
 }
 
-function Mini({ label, value }: { label: string; value: string }) {
+function Slash() {
   return (
-    <div className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1.5">
-      <p className="text-[9.5px] uppercase tracking-[0.1em] text-[var(--text-3)]">{label}</p>
-      <p className="mt-0.5 text-[13px] font-semibold tabular-nums">{value}</p>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-[var(--text-3)]">
+      <path d="M16.88 3.549L7.12 20.451" stroke="currentColor" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ChevronUpDown() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--text-3)]">
+      <path d="M5 6l3-3 3 3M5 10l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SearchHint() {
+  return (
+    <div className="hidden h-8 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2.5 text-[12px] text-[var(--text-3)] hover:border-[var(--border-strong)] md:flex">
+      <Search className="h-3.5 w-3.5" />
+      <span>Search…</span>
+      <span className="ml-2 inline-flex items-center gap-0.5 rounded border border-[var(--border)] bg-[var(--bg-elev-2)] px-1 py-px font-mono text-[10px]">
+        <Command className="h-2.5 w-2.5" /> K
+      </span>
     </div>
   );
 }
 
-function Empty({ text }: { text: string }) {
-  return <p className="px-1 text-[11px] text-[var(--text-3)]">{text}</p>;
-}
-
-function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+function MobileTabBar({ current, onChange }: { current: Tab; onChange: (t: Tab) => void }) {
+  const items: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
+    { id: "overview", label: "Home", icon: <Gauge className="h-4 w-4" /> },
+    { id: "map", label: "Map", icon: <Boxes className="h-4 w-4" /> },
+    { id: "domains", label: "Domains", icon: <Layers className="h-4 w-4" /> },
+    { id: "agents", label: "Agents", icon: <Sparkles className="h-4 w-4" /> },
+    { id: "settings", label: "More", icon: <Settings className="h-4 w-4" /> },
+  ];
   return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center gap-0.5 py-2.5 text-[10.5px] ${active ? "text-[var(--text)]" : "text-[var(--text-3)]"}`}
-    >
-      <span className={`grid h-7 w-7 place-items-center rounded-md ${active ? "bg-[var(--bg-elev-2)] text-[var(--accent)]" : ""}`}>{icon}</span>
-      {label}
-    </button>
+    <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 border-t border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur md:hidden">
+      {items.map((item) => {
+        const active = current === item.id;
+        return (
+          <button
+            key={item.id}
+            onClick={() => onChange(item.id)}
+            className={`flex flex-col items-center gap-0.5 py-2.5 text-[10.5px] ${
+              active ? "text-[var(--text)]" : "text-[var(--text-3)]"
+            }`}
+          >
+            <span className={`grid h-7 w-7 place-items-center rounded-md ${active ? "bg-[var(--bg-elev-2)]" : ""}`}>
+              {item.icon}
+            </span>
+            {item.label}
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
-function KeyHint() {
-  return (
-    <div className="hidden items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-1.5 py-1 text-[10.5px] text-[var(--text-3)] md:flex">
-      <Command className="h-3 w-3" />
-      <span>K</span>
-    </div>
-  );
-}
+/* ──────────────────────────── Helpers ──────────────────────────── */
 
 function scoreColor(score: number) {
   if (score >= 75) return "var(--success)";
@@ -824,3 +1100,4 @@ function downloadReport(analysis: Analysis | null) {
   anchor.click();
   URL.revokeObjectURL(url);
 }
+
