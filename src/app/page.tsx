@@ -1,10 +1,25 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import {
+  ChevronRight,
+  Command,
+  Database,
+  Download,
+  LayoutGrid,
+  LogOut,
+  Map as MapIcon,
+  Sparkles,
+  Stethoscope,
+  TerminalSquare,
+  X,
+} from "lucide-react";
 import { Csdm3dUniverse } from "@/components/Csdm3dUniverse";
 
 type Stage = "foundation" | "crawl" | "walk" | "run" | "fly";
 type Domain = "foundational" | "design" | "build" | "technical-services" | "sell-consume";
+
+type TableProbe = { table: string; available: boolean; count: number };
 
 type DomainScore = {
   domain: Domain;
@@ -13,6 +28,17 @@ type DomainScore = {
   stage: Stage;
   blockers: number;
   evidence: string;
+  tables?: TableProbe[];
+};
+
+type Agent = {
+  id: string;
+  name: string;
+  role: string;
+  avatar: string;
+  color: string;
+  tagline: string;
+  insights: Array<{ title: string; detail: string }>;
 };
 
 type Analysis = {
@@ -21,10 +47,14 @@ type Analysis = {
   overallScore: number;
   globalStage: Stage;
   progressToNext: number;
+  csdmVersion: string;
   domains: DomainScore[];
+  agents: Agent[];
   insights: Array<{ title: string; detail: string }>;
   generatedAt: string;
 };
+
+type MobileTab = "map" | "agents" | "domains" | "report";
 
 const stageLabels: Record<Stage, string> = {
   foundation: "Foundation",
@@ -34,32 +64,14 @@ const stageLabels: Record<Stage, string> = {
   fly: "Fly",
 };
 
-const domainMeta: Record<Domain, { label: string; color: string; position: { left: string; top: string } }> = {
-  foundational: {
-    label: "Foundational Data",
-    color: "#0ca678",
-    position: { left: "9%", top: "24%" },
-  },
-  design: {
-    label: "Design",
-    color: "#1c7ed6",
-    position: { left: "39%", top: "16%" },
-  },
-  build: {
-    label: "Build",
-    color: "#f08c00",
-    position: { left: "63%", top: "43%" },
-  },
-  "technical-services": {
-    label: "Manage Technical Services",
-    color: "#15aabf",
-    position: { left: "18%", top: "59%" },
-  },
-  "sell-consume": {
-    label: "Sell / Consume Services",
-    color: "#2f9e44",
-    position: { left: "71%", top: "20%" },
-  },
+const domainOrder: Domain[] = ["foundational", "design", "build", "technical-services", "sell-consume"];
+
+const domainShort: Record<Domain, string> = {
+  foundational: "Foundation",
+  design: "Design",
+  build: "Build",
+  "technical-services": "Tech Services",
+  "sell-consume": "Sell / Consume",
 };
 
 const demoAnalysis: Analysis = {
@@ -68,11 +80,12 @@ const demoAnalysis: Analysis = {
   overallScore: 70,
   globalStage: "crawl",
   progressToNext: 42,
+  csdmVersion: "CSDM 5.0",
   generatedAt: new Date().toISOString(),
   domains: [
     {
       domain: "foundational",
-      label: domainMeta.foundational.label,
+      label: "Foundational Data",
       score: 84,
       stage: "walk",
       blockers: 1,
@@ -80,7 +93,7 @@ const demoAnalysis: Analysis = {
     },
     {
       domain: "design",
-      label: domainMeta.design.label,
+      label: "Design",
       score: 70,
       stage: "crawl",
       blockers: 3,
@@ -88,7 +101,7 @@ const demoAnalysis: Analysis = {
     },
     {
       domain: "build",
-      label: domainMeta.build.label,
+      label: "Build",
       score: 64,
       stage: "crawl",
       blockers: 4,
@@ -96,7 +109,7 @@ const demoAnalysis: Analysis = {
     },
     {
       domain: "technical-services",
-      label: domainMeta["technical-services"].label,
+      label: "Manage Technical Services",
       score: 76,
       stage: "walk",
       blockers: 2,
@@ -104,30 +117,78 @@ const demoAnalysis: Analysis = {
     },
     {
       domain: "sell-consume",
-      label: domainMeta["sell-consume"].label,
+      label: "Sell / Consume Services",
       score: 57,
       stage: "crawl",
       blockers: 5,
       evidence: "Customer-facing service portfolio traceability is the weakest maturity signal.",
     },
   ],
+  agents: [
+    {
+      id: "pierrondi-ea",
+      name: "Paulo Pierrondi",
+      role: "Enterprise Architect",
+      avatar: "PP",
+      color: "#5e6ad2",
+      tagline: "Strategy, exec narrative, CSDM 5.0 roadmap.",
+      insights: [
+        {
+          title: "Executive narrative",
+          detail:
+            "Crawl maturity. Position CSDM 5.0 as the operating backbone for ITOM, Service Mapping and Now Assist trust — sell incremental wins, not a multi-year program.",
+        },
+        {
+          title: "Where to start",
+          detail:
+            "Sell / Consume Services scored lowest (57). Make portfolio traceability and business service ownership the first remediation workshop and tie it to a measurable KPI.",
+        },
+        {
+          title: "AI readiness implication",
+          detail:
+            "Now Assist outputs are high-risk on this data shape. Use AI for explanation and prioritization, keep autonomous action governed.",
+        },
+      ],
+    },
+    {
+      id: "itom-doctor",
+      name: "ITOM Doctor",
+      role: "CMDB & Discovery Specialist",
+      avatar: "Rx",
+      color: "#26b58a",
+      tagline: "CMDB health, Discovery coverage, Service Mapping signals.",
+      insights: [
+        {
+          title: "CMDB health",
+          detail:
+            "Foundational layer at 84/100 — good baseline. Push for CI relationship density and reduce orphan CIs before scaling Discovery patterns.",
+        },
+        {
+          title: "Discovery & Service Mapping",
+          detail:
+            "Build domain at 64/100. Application Service population is the leading indicator — this signal says Service Mapping has not been run end-to-end.",
+        },
+        {
+          title: "CMDB Health backlog",
+          detail:
+            "15 blockers across the 5 domains. Treat them as a CMDB Health dashboard backlog, not a single program.",
+        },
+      ],
+    },
+  ],
   insights: [
     {
       title: "Executive narrative",
-      detail: "The instance is at Crawl maturity. The story should focus on incremental trust in CMDB data before scaling automation and AI use cases.",
+      detail:
+        "Crawl maturity. Position CSDM 5.0 as the operating backbone for ITOM, Service Mapping and Now Assist trust.",
     },
     {
-      title: "Weakest maturity domain",
-      detail: "Sell / Consume Services is limiting the global stage. Start with portfolio traceability and business service ownership.",
-    },
-    {
-      title: "AI readiness implication",
-      detail: "AI can explain patterns and prioritize remediation, but autonomous action should wait until relationships and ownership are more reliable.",
+      title: "CMDB health",
+      detail:
+        "Foundational layer at 84/100 — good baseline. Push for CI relationship density.",
     },
   ],
 };
-
-const domains = Object.keys(domainMeta) as Domain[];
 
 export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -139,8 +200,10 @@ export default function Home() {
   const [instancePassword, setInstancePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mobileTab, setMobileTab] = useState<MobileTab>("map");
+  const [connectOpen, setConnectOpen] = useState(false);
 
-  const rankedDomains = useMemo(
+  const ranked = useMemo(
     () => [...(analysis?.domains ?? [])].sort((a, b) => a.score - b.score),
     [analysis],
   );
@@ -165,6 +228,8 @@ export default function Home() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Unable to analyze this instance.");
       setAnalysis(payload.analysis);
+      setConnectOpen(false);
+      setMobileTab("map");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
@@ -173,237 +238,389 @@ export default function Home() {
   }
 
   if (!loggedIn) {
-    return (
-      <main className="min-h-screen bg-[#071924] text-white">
-        <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="relative flex flex-col justify-between overflow-hidden px-6 py-8 md:px-12">
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(61,208,216,0.22),transparent_34%),linear-gradient(180deg,#082331,#06131e)]" />
-            <div className="relative z-10 flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#3dd0d8] font-black text-[#06131e]">
-                3D
-              </div>
-              <div>
-                <p className="text-sm font-black">CSDM3D</p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-cyan-100/55">Maturity map</p>
-              </div>
-            </div>
-            <p className="relative z-10 mt-4 w-fit rounded-full border border-white/10 bg-white/[0.08] px-3 py-1 text-xs font-bold text-cyan-50/80">
-              Built for the ServiceNow community by Paulo Pierrondi
-            </p>
-
-            <div className="relative z-10 max-w-3xl py-20">
-              <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-[#8ce99a]">
-                ServiceNow CMDB + CSDM5
-              </p>
-              <h1 className="text-5xl font-black leading-[0.95] tracking-tight md:text-7xl">
-                Turn CSDM maturity into a map people can act on.
-              </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
-                Login, connect a ServiceNow instance, analyze the five CSDM domains, and generate an executive-ready maturity view with AI-guided insights.
-              </p>
-            </div>
-
-            <div className="relative z-10 grid max-w-3xl gap-3 md:grid-cols-3">
-              <LaunchProof label="Domains" value="CSDM5" />
-              <LaunchProof label="Output" value="3D Map" />
-              <LaunchProof label="AI role" value="Explain" />
-            </div>
-          </section>
-
-          <section className="flex items-center justify-center bg-[#f4f7fb] px-6 py-10 text-[#102a43]">
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleLogin();
-              }}
-              className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-7 shadow-xl"
-            >
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b7285]">Private workspace</p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight">Sign in to CSDM3D</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                This public build uses a lightweight local login gate so teams can test the concept without server secrets.
-              </p>
-
-              <label className="mt-6 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Email</label>
-              <input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="mt-2 w-full rounded-md border border-slate-300 px-3 py-3 text-sm outline-none focus:border-[#0b7285]"
-                type="email"
-              />
-              <label className="mt-4 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Password</label>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="mt-2 w-full rounded-md border border-slate-300 px-3 py-3 text-sm outline-none focus:border-[#0b7285]"
-                type="password"
-              />
-              <button
-                type="button"
-                onClick={handleLogin}
-                className="mt-6 w-full rounded-md bg-[#0b7285] px-4 py-3 text-sm font-black text-white transition hover:bg-[#095c6b]"
-              >
-                Enter workspace
-              </button>
-            </form>
-          </section>
-        </div>
-      </main>
-    );
+    return <LoginScreen email={email} password={password} setEmail={setEmail} setPassword={setPassword} onSubmit={handleLogin} />;
   }
 
   return (
-    <main className="min-h-screen bg-[#eaf0f7] text-[#102a43]">
-      <header className="flex min-h-16 items-center justify-between border-b border-white/10 bg-[#0b3041] px-5 text-white">
-        <div className="flex items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#3dd0d8] text-sm font-black text-[#06131e]">3D</div>
-          <div>
-            <p className="text-lg font-black">CSDM3D</p>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">CMDB maturity workspace</p>
+    <main className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+      {/* Top bar */}
+      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-[var(--border)] bg-[var(--bg)]/95 px-3 backdrop-blur md:px-4">
+        <div className="flex items-center gap-2.5">
+          <div className="grid h-6 w-6 place-items-center rounded-md bg-[var(--accent)] text-[11px] font-semibold text-white">
+            3D
           </div>
+          <div className="hidden items-baseline gap-2 sm:flex">
+            <span className="text-[13px] font-semibold tracking-tight">CSDM3D</span>
+            <span className="text-[11px] text-[var(--text-3)]">/ {analysis?.csdmVersion ?? "CSDM 5.0"}</span>
+          </div>
+          {analysis && (
+            <span className="ml-1 hidden items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1 text-[11px] text-[var(--text-2)] md:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
+              {analysis.instanceName}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setAnalysis(demoAnalysis)} className="rounded-md border border-white/20 px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10">
-            Load demo
+
+        <div className="flex items-center gap-1.5">
+          <KeyHint />
+          <button
+            onClick={() => setAnalysis(demoAnalysis)}
+            className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2.5 py-1.5 text-[12px] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+          >
+            Demo data
           </button>
-          <button onClick={() => setLoggedIn(false)} className="rounded-md bg-white/10 px-4 py-2 text-sm font-bold text-white/80 hover:bg-white/15">
-            Sign out
+          <button
+            onClick={() => setConnectOpen(true)}
+            className="rounded-md bg-[var(--accent)] px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-[var(--accent-hover)]"
+          >
+            Connect
+          </button>
+          <button
+            onClick={() => setLoggedIn(false)}
+            aria-label="Sign out"
+            className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] p-1.5 text-[var(--text-2)] hover:text-[var(--text)]"
+          >
+            <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
       </header>
 
-      <div className="grid min-h-[calc(100vh-4rem)] grid-cols-1 xl:grid-cols-[360px_1fr_380px]">
-        <aside className="border-r border-slate-200 bg-white">
-          <section className="border-b border-slate-200 p-5">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b7285]">ServiceNow instance</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight">Connect and analyze</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Credentials are sent only to your local API route for this analysis request. Do not deploy this demo without adding production-grade auth and secret storage.
-            </p>
-          </section>
-
-          <form onSubmit={runLiveAnalysis} className="space-y-4 border-b border-slate-200 p-5">
-            <Field label="Instance URL" value={instanceUrl} onChange={setInstanceUrl} placeholder="https://example.service-now.com" type="url" />
-            <Field label="Username" value={username} onChange={setUsername} placeholder="api.user" />
-            <Field label="Password" value={instancePassword} onChange={setInstancePassword} placeholder="••••••••" type="password" />
-            {error && <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-            <button disabled={loading} className="w-full rounded-md bg-[#0b7285] px-4 py-3 text-sm font-black text-white transition hover:bg-[#095c6b] disabled:opacity-60">
-              {loading ? "Analyzing..." : "Analyze CSDM5"}
-            </button>
-          </form>
-
-          <section className="space-y-3 p-5">
-            <PipelineStep done label="1. Login" detail="Enter the protected CSDM3D workspace." />
-            <PipelineStep done={!!analysis} label="2. CSDM5 analysis" detail="Connect ServiceNow or load the sample data." />
-            <PipelineStep done={!!analysis} label="3. Map and insights" detail="Use the result in a workshop, report, or LinkedIn demo." />
-          </section>
+      {/* Layout: 3 columns on desktop, single column + bottom tabs on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_340px]">
+        {/* Sidebar — desktop only */}
+        <aside className="hidden border-r border-[var(--border)] lg:block">
+          <Sidebar analysis={analysis} ranked={ranked} onPickDomain={() => {}} />
         </aside>
 
-        <section className="min-h-[760px] p-5">
-          {analysis ? (
-            <>
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#43617a]">CSDM5 maturity universe</p>
-                  <h2 className="mt-1 text-3xl font-black tracking-tight">3D maturity map</h2>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-right shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Global stage</p>
-                  <p className="text-xl font-black text-[#0b7285]">{stageLabels[analysis.globalStage]}</p>
-                </div>
-              </div>
-              <CsdmMap analysis={analysis} />
-              <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                {rankedDomains.slice(0, 3).map((domain) => (
-                  <div key={domain.domain} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-red-600">Priority · {domain.label}</p>
-                    <p className="mt-2 text-sm font-black">{domain.blockers} blockers to investigate</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">{domain.evidence}</p>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="flex h-full min-h-[760px] items-center justify-center">
-              <div className="max-w-xl">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b7285]">No analysis yet</p>
-                <h2 className="mt-2 text-4xl font-black tracking-tight">Start with demo data or connect a ServiceNow instance.</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  The demo data shows the full product story for community sharing. A live instance run calls the ServiceNow Table API for lightweight maturity signals.
-                </p>
-                <button onClick={() => setAnalysis(demoAnalysis)} className="mt-6 rounded-md bg-[#0b7285] px-4 py-3 text-sm font-black text-white">
-                  Load demo analysis
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Main canvas */}
+        <section className="min-h-[calc(100vh-3rem-3.25rem)] lg:min-h-[calc(100vh-3rem)]">
+          <MainCanvas analysis={analysis} mobileTab={mobileTab} ranked={ranked} />
         </section>
 
-        <aside className="overflow-auto border-l border-slate-200 bg-white">
-          <section className="border-b border-slate-200 p-5">
-            <PanelTitle title="Dashboard" />
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Metric label="Score" value={analysis ? String(analysis.overallScore) : "--"} />
-              <Metric label="Stage" value={analysis ? stageLabels[analysis.globalStage] : "--"} />
-              <Metric label="To next" value={analysis ? `${analysis.progressToNext}%` : "--"} />
-              <Metric label="Domains" value={analysis ? String(analysis.domains.length) : "--"} />
-            </div>
-          </section>
-
-          <section className="border-b border-slate-200 p-5">
-            <PanelTitle title="AI insights" />
-            <div className="mt-4 space-y-3">
-              {analysis ? (
-                analysis.insights.map((insight) => (
-                  <div key={insight.title} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-sm font-black">{insight.title}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">{insight.detail}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">Run an analysis to generate AI-ready insights.</p>
-              )}
-            </div>
-          </section>
-
-          <section className="border-b border-slate-200 p-5">
-            <PanelTitle title="Domains" />
-            <div className="mt-4 space-y-2">
-              {domains.map((domain) => {
-                const result = analysis?.domains.find((item) => item.domain === domain);
-                return (
-                  <div key={domain} className="rounded-lg border border-slate-200 bg-white p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-black">{domainMeta[domain].label}</p>
-                      <span className="text-sm font-black text-[#0b7285]">{result?.score ?? "--"}</span>
-                    </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                      <div className="h-full rounded-full bg-[#0b7285]" style={{ width: `${result?.score ?? 0}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="p-5">
-            <PanelTitle title="Report" />
-            <button
-              disabled={!analysis}
-              onClick={() => downloadReport(analysis)}
-              className="mt-4 w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black transition hover:border-[#0b7285] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Download JSON report
-            </button>
-          </section>
+        {/* Right inspector — desktop only */}
+        <aside className="hidden border-l border-[var(--border)] lg:block">
+          <Inspector analysis={analysis} ranked={ranked} />
         </aside>
+      </div>
+
+      {/* Mobile bottom tab bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-4 border-t border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur lg:hidden">
+        <TabButton active={mobileTab === "map"} onClick={() => setMobileTab("map")} icon={<MapIcon className="h-4 w-4" />} label="Map" />
+        <TabButton active={mobileTab === "agents"} onClick={() => setMobileTab("agents")} icon={<Sparkles className="h-4 w-4" />} label="Agents" />
+        <TabButton active={mobileTab === "domains"} onClick={() => setMobileTab("domains")} icon={<LayoutGrid className="h-4 w-4" />} label="Domains" />
+        <TabButton active={mobileTab === "report"} onClick={() => setMobileTab("report")} icon={<Download className="h-4 w-4" />} label="Report" />
+      </nav>
+
+      {connectOpen && (
+        <ConnectModal
+          instanceUrl={instanceUrl}
+          username={username}
+          password={instancePassword}
+          loading={loading}
+          error={error}
+          setInstanceUrl={setInstanceUrl}
+          setUsername={setUsername}
+          setPassword={setInstancePassword}
+          onClose={() => setConnectOpen(false)}
+          onSubmit={runLiveAnalysis}
+        />
+      )}
+    </main>
+  );
+}
+
+function LoginScreen({
+  email,
+  password,
+  setEmail,
+  setPassword,
+  onSubmit,
+}: {
+  email: string;
+  password: string;
+  setEmail: (v: string) => void;
+  setPassword: (v: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[var(--bg)] px-4 text-[var(--text)]">
+      <div className="w-full max-w-[380px]">
+        <div className="mb-8 flex items-center gap-2.5">
+          <div className="grid h-7 w-7 place-items-center rounded-md bg-[var(--accent)] text-[12px] font-semibold text-white">3D</div>
+          <span className="text-[14px] font-semibold tracking-tight">CSDM3D</span>
+        </div>
+
+        <h1 className="text-[22px] font-semibold leading-tight tracking-tight">Sign in to your workspace</h1>
+        <p className="mt-1.5 text-[13px] text-[var(--text-2)]">
+          CSDM 5.0 maturity assessment with two specialist agents.
+        </p>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+          }}
+          className="mt-7 space-y-3"
+        >
+          <Field label="Email" value={email} onChange={setEmail} type="email" />
+          <Field label="Password" value={password} onChange={setPassword} type="password" />
+          <button
+            type="submit"
+            className="mt-2 w-full rounded-md bg-[var(--accent)] px-3 py-2 text-[13px] font-medium text-white hover:bg-[var(--accent-hover)]"
+          >
+            Continue
+          </button>
+        </form>
+
+        <p className="mt-6 text-[11px] text-[var(--text-3)]">
+          Public demo · no credentials are persisted server-side.
+        </p>
       </div>
     </main>
   );
 }
 
-function CsdmMap({ analysis }: { analysis: Analysis }) {
-  return <Csdm3dUniverse analysis={analysis} />;
+function Sidebar({
+  analysis,
+  ranked,
+}: {
+  analysis: Analysis | null;
+  ranked: DomainScore[];
+  onPickDomain: (d: Domain) => void;
+}) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-[var(--border)] p-4">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">Workspace</p>
+        <h2 className="mt-1 text-[14px] font-semibold tracking-tight">CSDM 5.0 Assessment</h2>
+        {analysis ? (
+          <div className="mt-3 grid grid-cols-3 gap-1.5">
+            <Mini label="Score" value={String(analysis.overallScore)} />
+            <Mini label="Stage" value={stageLabels[analysis.globalStage]} />
+            <Mini label="Next" value={`${analysis.progressToNext}%`} />
+          </div>
+        ) : (
+          <p className="mt-3 text-[12px] text-[var(--text-2)]">Run an analysis or load demo data.</p>
+        )}
+      </div>
+
+      <SidebarSection title="Agents">
+        {analysis?.agents?.map((agent) => (
+          <SidebarRow key={agent.id} avatar={agent.avatar} avatarColor={agent.color} title={agent.name} subtitle={agent.role} />
+        )) ?? <Empty text="No analysis" />}
+      </SidebarSection>
+
+      <SidebarSection title="Priorities">
+        {ranked.length > 0 ? (
+          ranked.slice(0, 3).map((domain) => (
+            <SidebarRow
+              key={domain.domain}
+              icon={<ChevronRight className="h-3.5 w-3.5 text-[var(--text-3)]" />}
+              title={domainShort[domain.domain]}
+              subtitle={`${domain.blockers} blockers`}
+              right={<ScorePill score={domain.score} />}
+            />
+          ))
+        ) : (
+          <Empty text="No priorities" />
+        )}
+      </SidebarSection>
+
+      <div className="mt-auto border-t border-[var(--border)] p-3 text-[11px] text-[var(--text-3)]">
+        <div className="flex items-center gap-1.5">
+          <Database className="h-3.5 w-3.5" />
+          <span>ServiceNow Table API</span>
+        </div>
+        <p className="mt-1 leading-relaxed">Lightweight CSDM 5.0 anchor-table probe. Credentials stay in memory.</p>
+      </div>
+    </div>
+  );
+}
+
+function MainCanvas({ analysis, mobileTab, ranked }: { analysis: Analysis | null; mobileTab: MobileTab; ranked: DomainScore[] }) {
+  if (!analysis) {
+    return (
+      <div className="grid h-full min-h-[calc(100vh-7rem)] place-items-center px-4 lg:min-h-[calc(100vh-3rem)]">
+        <div className="max-w-[420px] text-center">
+          <div className="mx-auto grid h-10 w-10 place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)]">
+            <MapIcon className="h-4 w-4 text-[var(--text-2)]" />
+          </div>
+          <h2 className="mt-4 text-[18px] font-semibold tracking-tight">No analysis yet</h2>
+          <p className="mt-1.5 text-[13px] text-[var(--text-2)]">
+            Connect a ServiceNow instance, or load the demo to explore the CSDM 5.0 maturity universe.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Mobile: render the active tab. Desktop: render full canvas (map + dock).
+  return (
+    <div className="px-3 pb-20 pt-3 md:px-4 md:pb-4">
+      {/* MAP tab on mobile + full on desktop */}
+      <div className={mobileTab === "map" ? "block" : "hidden lg:block"}>
+        <CanvasHeader analysis={analysis} />
+        <Csdm3dUniverse analysis={analysis} />
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {ranked.slice(0, 3).map((domain) => (
+            <PriorityCard key={domain.domain} domain={domain} />
+          ))}
+        </div>
+      </div>
+
+      {/* AGENTS tab on mobile */}
+      <div className={mobileTab === "agents" ? "block lg:hidden" : "hidden"}>
+        <PanelHeading title="Specialist agents" subtitle={`${analysis.agents.length} active for this assessment`} />
+        <div className="mt-3 space-y-3">
+          {analysis.agents.map((agent) => (
+            <AgentCard key={agent.id} agent={agent} />
+          ))}
+        </div>
+      </div>
+
+      {/* DOMAINS tab on mobile */}
+      <div className={mobileTab === "domains" ? "block lg:hidden" : "hidden"}>
+        <PanelHeading title="CSDM 5.0 domains" subtitle="Score per anchor-table probe" />
+        <div className="mt-3 space-y-2">
+          {domainOrder.map((id) => {
+            const d = analysis.domains.find((x) => x.domain === id);
+            return d ? <DomainRow key={id} domain={d} /> : null;
+          })}
+        </div>
+      </div>
+
+      {/* REPORT tab on mobile */}
+      <div className={mobileTab === "report" ? "block lg:hidden" : "hidden"}>
+        <PanelHeading title="Export" subtitle="Audit-friendly JSON snapshot" />
+        <button
+          onClick={() => downloadReport(analysis)}
+          className="mt-3 flex w-full items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-3 py-3 text-[13px] hover:border-[var(--border-strong)]"
+        >
+          <span>
+            <span className="block font-medium">Download JSON report</span>
+            <span className="text-[11px] text-[var(--text-3)]">Domains, scores, tables, agents</span>
+          </span>
+          <Download className="h-4 w-4 text-[var(--text-2)]" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CanvasHeader({ analysis }: { analysis: Analysis }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <div>
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">Maturity universe</p>
+        <h2 className="mt-0.5 text-[16px] font-semibold tracking-tight md:text-[18px]">
+          {analysis.instanceName} <span className="text-[var(--text-3)]">/ {stageLabels[analysis.globalStage]}</span>
+        </h2>
+      </div>
+      <div className="flex items-center gap-2 text-[11px] text-[var(--text-2)]">
+        <span className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1">
+          Score <span className="ml-1 text-[var(--text)]">{analysis.overallScore}</span>
+        </span>
+        <span className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1">
+          Next <span className="ml-1 text-[var(--text)]">{analysis.progressToNext}%</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Inspector({ analysis, ranked }: { analysis: Analysis | null; ranked: DomainScore[] }) {
+  if (!analysis) {
+    return (
+      <div className="p-4">
+        <Empty text="Run an analysis to populate the inspector." />
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-full flex-col">
+      <SidebarSection title="Specialist agents">
+        {analysis.agents.map((agent) => (
+          <AgentCard key={agent.id} agent={agent} compact />
+        ))}
+      </SidebarSection>
+
+      <SidebarSection title="Domains">
+        {domainOrder.map((id) => {
+          const d = analysis.domains.find((x) => x.domain === id);
+          return d ? <DomainRow key={id} domain={d} compact /> : null;
+        })}
+      </SidebarSection>
+
+      <div className="border-t border-[var(--border)] p-3">
+        <button
+          onClick={() => downloadReport(analysis)}
+          className="flex w-full items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-3 py-2 text-[12px] hover:border-[var(--border-strong)]"
+        >
+          <span>Download JSON report</span>
+          <Download className="h-3.5 w-3.5 text-[var(--text-2)]" />
+        </button>
+        <p className="mt-2 text-[10px] text-[var(--text-3)]">{ranked.length} domains · {analysis.csdmVersion}</p>
+      </div>
+    </div>
+  );
+}
+
+function ConnectModal({
+  instanceUrl,
+  username,
+  password,
+  loading,
+  error,
+  setInstanceUrl,
+  setUsername,
+  setPassword,
+  onClose,
+  onSubmit,
+}: {
+  instanceUrl: string;
+  username: string;
+  password: string;
+  loading: boolean;
+  error: string;
+  setInstanceUrl: (v: string) => void;
+  setUsername: (v: string) => void;
+  setPassword: (v: string) => void;
+  onClose: () => void;
+  onSubmit: (e: FormEvent) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-[440px] rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elev-1)] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">ServiceNow</p>
+            <h3 className="text-[14px] font-semibold tracking-tight">Connect instance</h3>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1 text-[var(--text-2)] hover:bg-[var(--bg-elev-2)]" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={onSubmit} className="space-y-3 p-4">
+          <Field label="Instance URL" value={instanceUrl} onChange={setInstanceUrl} placeholder="https://example.service-now.com" type="url" />
+          <Field label="Username" value={username} onChange={setUsername} placeholder="api.user" />
+          <Field label="Password" value={password} onChange={setPassword} placeholder="••••••••" type="password" />
+          {error && (
+            <p className="rounded-md border border-[#3a1f23] bg-[#23151a] px-3 py-2 text-[12px] text-[#ff8a8a]">{error}</p>
+          )}
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <p className="text-[11px] text-[var(--text-3)]">Probes CSDM 5.0 anchor tables via Table API.</p>
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-md bg-[var(--accent)] px-3 py-2 text-[12px] font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-60"
+            >
+              {loading ? "Analyzing…" : "Run analysis"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function Field({
@@ -416,57 +633,185 @@ function Field({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  placeholder: string;
+  placeholder?: string;
   type?: string;
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{label}</span>
+      <span className="text-[11px] text-[var(--text-2)]">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         type={type}
-        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-3 text-sm outline-none focus:border-[#0b7285]"
+        className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-2.5 py-2 text-[13px] text-[var(--text)] placeholder:text-[var(--text-3)] focus:border-[var(--accent)]"
       />
     </label>
   );
 }
 
-function LaunchProof({ label, value }: { label: string; value: string }) {
+function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.08] p-4">
-      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100/50">{label}</p>
-      <p className="mt-2 text-2xl font-black">{value}</p>
-    </div>
+    <section className="border-b border-[var(--border)] p-3">
+      <p className="px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">{title}</p>
+      <div className="mt-2 space-y-1.5">{children}</div>
+    </section>
   );
 }
 
-function PipelineStep({ done, label, detail }: { done: boolean; label: string; detail: string }) {
+function SidebarRow({
+  avatar,
+  avatarColor,
+  icon,
+  title,
+  subtitle,
+  right,
+}: {
+  avatar?: string;
+  avatarColor?: string;
+  icon?: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+}) {
   return (
-    <div className="grid grid-cols-[28px_1fr] gap-3">
-      <div className={`mt-0.5 grid h-7 w-7 place-items-center rounded-full border ${done ? "border-[#087f5b] bg-[#e6fcf5] text-[#087f5b]" : "border-slate-200 bg-white text-slate-400"}`}>
-        <span className="text-xs font-black">✓</span>
+    <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-[var(--bg-elev-1)]">
+      {avatar ? (
+        <div className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold text-white" style={{ background: avatarColor }}>
+          {avatar}
+        </div>
+      ) : (
+        icon
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[12.5px] font-medium">{title}</p>
+        {subtitle && <p className="truncate text-[11px] text-[var(--text-3)]">{subtitle}</p>}
       </div>
-      <div>
-        <p className="text-sm font-black">{label}</p>
-        <p className="mt-0.5 text-xs leading-5 text-slate-500">{detail}</p>
+      {right}
+    </div>
+  );
+}
+
+function AgentCard({ agent, compact }: { agent: Agent; compact?: boolean }) {
+  return (
+    <article className={`rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] ${compact ? "p-3" : "p-4"}`}>
+      <header className="flex items-center gap-2.5">
+        <div className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-semibold text-white" style={{ background: agent.color }}>
+          {agent.avatar}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold tracking-tight">{agent.name}</p>
+          <p className="truncate text-[11px] text-[var(--text-2)]">{agent.role}</p>
+        </div>
+        {agent.id === "itom-doctor" ? (
+          <Stethoscope className="h-3.5 w-3.5 text-[var(--text-3)]" />
+        ) : (
+          <TerminalSquare className="h-3.5 w-3.5 text-[var(--text-3)]" />
+        )}
+      </header>
+      <p className="mt-2 text-[11px] text-[var(--text-3)]">{agent.tagline}</p>
+      <ul className="mt-3 space-y-2.5">
+        {agent.insights.map((insight) => (
+          <li key={insight.title} className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-2.5">
+            <p className="text-[12px] font-medium">{insight.title}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-2)]">{insight.detail}</p>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+function DomainRow({ domain, compact }: { domain: DomainScore; compact?: boolean }) {
+  return (
+    <div className={`rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] ${compact ? "p-2.5" : "p-3"}`}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[12.5px] font-medium">{domain.label}</p>
+        <ScorePill score={domain.score} />
+      </div>
+      <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--bg-elev-3)]">
+        <div className="h-full rounded-full" style={{ width: `${domain.score}%`, background: scoreColor(domain.score) }} />
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[10.5px] text-[var(--text-3)]">
+        <span>{stageLabels[domain.stage]}</span>
+        <span>{domain.blockers} blockers</span>
       </div>
     </div>
   );
 }
 
-function PanelTitle({ title }: { title: string }) {
-  return <h2 className="text-sm font-black uppercase tracking-[0.14em]">{title}</h2>;
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
+function PriorityCard({ domain }: { domain: DomainScore }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-black">{value}</p>
+    <div className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] p-3">
+      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--danger)]">Priority · {domain.label}</p>
+      <p className="mt-1.5 text-[12px] font-medium">{domain.blockers} blockers to investigate</p>
+      <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-2)]">{domain.evidence}</p>
     </div>
   );
+}
+
+function PanelHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-3)]">CSDM3D</p>
+      <h2 className="mt-0.5 text-[16px] font-semibold tracking-tight">{title}</h2>
+      <p className="text-[12px] text-[var(--text-2)]">{subtitle}</p>
+    </div>
+  );
+}
+
+function ScorePill({ score }: { score: number }) {
+  return (
+    <span
+      className="rounded px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums"
+      style={{
+        background: `${scoreColor(score)}1f`,
+        color: scoreColor(score),
+      }}
+    >
+      {score}
+    </span>
+  );
+}
+
+function Mini({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1.5">
+      <p className="text-[9.5px] uppercase tracking-[0.1em] text-[var(--text-3)]">{label}</p>
+      <p className="mt-0.5 text-[13px] font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="px-1 text-[11px] text-[var(--text-3)]">{text}</p>;
+}
+
+function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center gap-0.5 py-2.5 text-[10.5px] ${active ? "text-[var(--text)]" : "text-[var(--text-3)]"}`}
+    >
+      <span className={`grid h-7 w-7 place-items-center rounded-md ${active ? "bg-[var(--bg-elev-2)] text-[var(--accent)]" : ""}`}>{icon}</span>
+      {label}
+    </button>
+  );
+}
+
+function KeyHint() {
+  return (
+    <div className="hidden items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-1.5 py-1 text-[10.5px] text-[var(--text-3)] md:flex">
+      <Command className="h-3 w-3" />
+      <span>K</span>
+    </div>
+  );
+}
+
+function scoreColor(score: number) {
+  if (score >= 75) return "var(--success)";
+  if (score >= 55) return "var(--warn)";
+  return "var(--danger)";
 }
 
 function downloadReport(analysis: Analysis | null) {
