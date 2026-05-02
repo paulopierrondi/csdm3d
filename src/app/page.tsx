@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   ArrowUpRight,
@@ -509,25 +509,8 @@ function Overview({
         </Card>
       </div>
 
-      {/* Bento row 3: insights */}
-      <Card title="Top insights" subtitle="From the agent panel">
-        <div className="grid grid-cols-1 gap-px bg-[var(--border)] md:grid-cols-2">
-          {analysis.agents.flatMap((a) =>
-            a.insights.slice(0, 2).map((insight) => (
-              <div key={`${a.id}-${insight.title}`} className="bg-[var(--bg-elev-1)] p-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <Avatar text={a.avatar} size={18} bg={a.color} />
-                  <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)]">
-                    {a.role}
-                  </span>
-                </div>
-                <p className="text-[13px] font-medium">{insight.title}</p>
-                <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--text-2)]">{insight.detail}</p>
-              </div>
-            )),
-          )}
-        </div>
-      </Card>
+      {/* Bento row 3: AI briefing */}
+      <AiBriefing key={analysis.instanceUrl} analysis={analysis} />
     </div>
   );
 }
@@ -778,6 +761,213 @@ function AgentMini({ agent }: { agent: Agent }) {
       </p>
     </div>
   );
+}
+
+/* ──────────────────────────── AI briefing ──────────────────────────── */
+
+function AiBriefing({ analysis }: { analysis: Analysis }) {
+  const segments = useMemo(() => {
+    const items: Array<{ agent: Agent; insight: Agent["insights"][number] }> = [];
+    const max = analysis.agents.reduce((m, a) => Math.max(m, a.insights.length), 0);
+    for (let i = 0; i < max; i++) {
+      for (const agent of analysis.agents) {
+        if (agent.insights[i]) items.push({ agent, insight: agent.insights[i] });
+      }
+    }
+    return items;
+  }, [analysis.agents]);
+
+  const total = segments.length;
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (paused || total === 0) return;
+    const STEP = 100 / 70; // ~7s per segment
+    const id = window.setInterval(() => {
+      setProgress((p) => {
+        if (p + STEP >= 100) {
+          setActive((a) => (a + 1) % total);
+          return 0;
+        }
+        return p + STEP;
+      });
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [paused, total]);
+
+  if (total === 0) return null;
+  const segment = segments[active];
+
+  function tapZone(event: React.MouseEvent<HTMLDivElement>) {
+    const target = event.currentTarget;
+    const x = event.clientX - target.getBoundingClientRect().left;
+    setProgress(0);
+    if (x < target.clientWidth / 2) {
+      setActive((a) => (a - 1 + total) % total);
+    } else {
+      setActive((a) => (a + 1) % total);
+    }
+  }
+
+  return (
+    <Card
+      title="AI Briefing"
+      subtitle={`${total} agent insights · auto-playing`}
+      actions={
+        <span className="flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-wider text-[var(--text-3)]">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+          </span>
+          Live
+        </span>
+      }
+    >
+      <div
+        onClick={tapZone}
+        onPointerDown={() => setPaused(true)}
+        onPointerUp={() => setPaused(false)}
+        onPointerLeave={() => setPaused(false)}
+        onPointerCancel={() => setPaused(false)}
+        className="relative aspect-[4/5] cursor-pointer select-none overflow-hidden border-b border-[var(--border)] bg-[var(--bg-elev-2)] sm:aspect-[3/2] lg:aspect-[16/8]"
+        style={{ background: "linear-gradient(180deg, #0a0a0c 0%, #050507 100%)" }}
+      >
+        <div
+          key={`${segment.agent.id}-${active}-bg`}
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(circle at 28% 22%, ${segment.agent.color}40, transparent 55%), radial-gradient(circle at 78% 80%, ${segment.agent.color}22, transparent 55%)`,
+            animation: "fadeIn 500ms ease-out",
+          }}
+        />
+
+        <div className="absolute left-3 right-3 top-3 z-20 flex gap-1">
+          {segments.map((_, i) => (
+            <div key={i} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/15">
+              <div
+                className="h-full rounded-full bg-white"
+                style={{
+                  width: i < active ? "100%" : i === active ? `${progress}%` : "0%",
+                  transition: i === active ? "width 100ms linear" : "none",
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div
+          key={`${segment.agent.id}-${active}-body`}
+          className="relative z-10 flex h-full flex-col justify-end p-5 pb-12 sm:p-7 sm:pb-12"
+          style={{ animation: "fadeIn 400ms ease-out" }}
+        >
+          <div className="flex items-center gap-2.5">
+            <Avatar text={segment.agent.avatar} size={32} bg={segment.agent.color} />
+            <div className="min-w-0">
+              <p className="truncate text-[12.5px] font-semibold tracking-tight">{segment.agent.name}</p>
+              <p className="truncate text-[11px] text-[var(--text-3)]">{segment.agent.role}</p>
+            </div>
+            <span
+              className="ml-auto rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
+              style={{ borderColor: `${segment.agent.color}55`, color: segment.agent.color }}
+            >
+              {segment.agent.id === "itom-doctor" ? "ITOM" : "EA"}
+            </span>
+          </div>
+          <h3 className="mt-4 text-[18px] font-semibold leading-tight tracking-tight sm:text-[22px]">
+            {segment.insight.title}
+          </h3>
+          <p className="mt-2.5 text-[13.5px] leading-relaxed text-[var(--text-2)] sm:text-[14px]">
+            {segment.insight.detail}
+          </p>
+        </div>
+
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-center justify-between font-mono text-[10px] text-[var(--text-3)]">
+          <span className="tabular-nums">
+            {String(active + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+          </span>
+          <span>{paused ? "paused" : "tap · hold"}</span>
+        </div>
+      </div>
+
+      <AskBar analysis={analysis} />
+    </Card>
+  );
+}
+
+function AskBar({ analysis }: { analysis: Analysis }) {
+  const [active, setActive] = useState<string | null>(null);
+  const prompts = useMemo(() => buildPrompts(analysis), [analysis]);
+  const answer = prompts.find((p) => p.id === active)?.answer;
+
+  return (
+    <div className="space-y-2.5 p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-[var(--text-3)]">
+        <Sparkles className="h-3 w-3 text-[var(--accent)]" />
+        Ask the agents
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {prompts.map((p) => {
+          const isActive = active === p.id;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setActive(isActive ? null : p.id)}
+              className={`rounded-full border px-2.5 py-1 text-[11.5px] transition ${
+                isActive
+                  ? "border-[var(--accent)] bg-[color-mix(in_oklab,var(--accent)_18%,transparent)] text-[var(--text)]"
+                  : "border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+              }`}
+            >
+              {p.question}
+            </button>
+          );
+        })}
+      </div>
+      {answer && (
+        <div
+          key={active ?? "empty"}
+          className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] p-3"
+          style={{ animation: "fadeIn 280ms ease-out" }}
+        >
+          <p className="text-[12.5px] leading-relaxed text-[var(--text-2)]">{answer}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildPrompts(analysis: Analysis) {
+  const ranked = [...analysis.domains].sort((a, b) => a.score - b.score);
+  const weakest = ranked[0];
+  const strongest = ranked[ranked.length - 1];
+  const stage = analysis.globalStage;
+  return [
+    {
+      id: "first",
+      question: "What should I tackle first?",
+      answer: weakest
+        ? `Start with ${weakest.label} — scored ${weakest.score}/100 with ${weakest.blockers} blockers. ${weakest.evidence}`
+        : "",
+    },
+    {
+      id: "exec",
+      question: "Give me the exec summary.",
+      answer: `Overall ${analysis.overallScore}/100 — ${stageLabels[stage]} maturity across ${analysis.domains.length} CSDM 5.0 domains. Strongest: ${strongest?.label} (${strongest?.score}). Weakest: ${weakest?.label} (${weakest?.score}). Position CSDM 5.0 as an incremental operating backbone, not a multi-year program.`,
+    },
+    {
+      id: "ai",
+      question: "Are we ready for Now Assist?",
+      answer:
+        stage === "fly" || stage === "run"
+          ? "Yes — scope a single, well-bounded Now Assist use case. Avoid horizontal rollout until ownership and lifecycle fields harden everywhere."
+          : stage === "walk"
+            ? "Partially. Use AI for explanation and prioritization. Keep autonomous actions governed until the Build domain matures further."
+            : "Not yet. Your data shape makes autonomous Now Assist actions high-risk. Use AI only for explanation, ranking and reasoning — not action.",
+    },
+  ];
 }
 
 function ActivityFeed({ analysis, extended = false }: { analysis: Analysis; extended?: boolean }) {

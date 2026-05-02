@@ -96,6 +96,16 @@ button {
   background: #3a3a3a;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
 /* Subtle radial backdrop on the body to mimic Vercel's deep-canvas glow */
 body::before {
   content: "";
