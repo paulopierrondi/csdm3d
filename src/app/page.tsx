@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { Csdm3dUniverse } from "@/components/Csdm3dUniverse";
+import { buildAgents, scoreToStage } from "@/lib/agents";
 
 type Stage = "foundation" | "crawl" | "walk" | "run" | "fly";
 type Domain = "foundational" | "design" | "build" | "technical-services" | "sell-consume";
@@ -72,121 +73,111 @@ const stageLabels: Record<Stage, string> = {
 
 const domainOrder: Domain[] = ["foundational", "design", "build", "technical-services", "sell-consume"];
 
-const demoAnalysis: Analysis = {
-  instanceName: "Demo Customer",
-  instanceUrl: "https://demo.service-now.com",
-  overallScore: 70,
-  globalStage: "crawl",
-  progressToNext: 42,
-  csdmVersion: "CSDM 5.0",
-  generatedAt: new Date().toISOString(),
-  domains: [
-    {
-      domain: "foundational",
-      label: "Foundational Data",
-      score: 84,
-      stage: "walk",
-      blockers: 1,
-      evidence: "Company, location and core CI records have enough quality to support next-stage governance.",
-    },
-    {
-      domain: "design",
-      label: "Design",
-      score: 70,
-      stage: "crawl",
-      blockers: 3,
-      evidence: "Business application ownership and lifecycle fields need stronger consistency.",
-    },
-    {
-      domain: "build",
-      label: "Build",
-      score: 64,
-      stage: "crawl",
-      blockers: 4,
-      evidence: "Application services exist, but relationship depth is not strong enough for run-stage automation.",
-    },
-    {
-      domain: "technical-services",
-      label: "Manage Technical Services",
-      score: 76,
-      stage: "walk",
-      blockers: 2,
-      evidence: "Technical services are visible, but service offering alignment still limits operational use.",
-    },
-    {
-      domain: "sell-consume",
-      label: "Sell / Consume Services",
-      score: 57,
-      stage: "crawl",
-      blockers: 5,
-      evidence: "Customer-facing service portfolio traceability is the weakest maturity signal.",
-    },
-  ],
-  agents: [
-    {
-      id: "pierrondi-ea",
-      name: "Paulo Pierrondi",
-      role: "Enterprise Architect",
-      avatar: "PP",
-      color: "#5e6ad2",
-      tagline: "Strategy, exec narrative, CSDM 5.0 roadmap.",
-      insights: [
-        {
-          title: "Executive narrative",
-          detail:
-            "Crawl maturity. Position CSDM 5.0 as the operating backbone for ITOM, Service Mapping and Now Assist trust — sell incremental wins, not a multi-year program.",
-        },
-        {
-          title: "Where to start",
-          detail:
-            "Sell / Consume Services scored lowest (57). Make portfolio traceability and business service ownership the first remediation workshop and tie it to a measurable KPI.",
-        },
-        {
-          title: "AI readiness implication",
-          detail:
-            "Now Assist outputs are high-risk on this data shape. Use AI for explanation and prioritization, keep autonomous action governed.",
-        },
-      ],
-    },
-    {
-      id: "itom-doctor",
-      name: "ITOM Doctor",
-      role: "CMDB & Discovery Specialist",
-      avatar: "Rx",
-      color: "#26b58a",
-      tagline: "CMDB health, Discovery coverage, Service Mapping signals.",
-      insights: [
-        {
-          title: "CMDB health",
-          detail:
-            "Foundational layer at 84/100 — good baseline. Push for CI relationship density and reduce orphan CIs before scaling Discovery patterns.",
-        },
-        {
-          title: "Discovery & Service Mapping",
-          detail:
-            "Build domain at 64/100. Application Service population is the leading indicator — this signal says Service Mapping has not been run end-to-end.",
-        },
-        {
-          title: "CMDB Health backlog",
-          detail:
-            "15 blockers across the 5 domains. Treat them as a CMDB Health dashboard backlog, not a single program.",
-        },
-      ],
-    },
-  ],
-  insights: [
-    {
-      title: "Executive narrative",
-      detail:
-        "Crawl maturity. Position CSDM 5.0 as the operating backbone for ITOM, Service Mapping and Now Assist trust.",
-    },
-    {
-      title: "CMDB health",
-      detail:
-        "Foundational layer at 84/100 — good baseline. Push for CI relationship density.",
-    },
-  ],
-};
+// Realistic CMDB story for the Load demo button — counts and reachability
+// chosen so the engine produces a sharp, opinionated narrative:
+//   • Foundational baseline solid (3:1 cmdb_rel_ci ratio, healthy seed)
+//   • APM never deployed → cmdb_application_product_model unreachable
+//   • Service Mapping ran but very lightly → cmdb_ci_service_auto count low
+//   • Business service portfolio is thin → sn_consumer unreachable
+const demoDomainsRaw = [
+  {
+    domain: "foundational" as const,
+    label: "Foundational Data",
+    tables: [
+      { table: "cmdb_ci", available: true, count: 47210 },
+      { table: "core_company", available: true, count: 28 },
+      { table: "cmn_location", available: true, count: 412 },
+      { table: "cmn_department", available: true, count: 124 },
+      { table: "sys_user_group", available: true, count: 386 },
+      { table: "cmdb_rel_ci", available: true, count: 142800 },
+    ],
+    evidence: "CI seed and relationship density healthy (3:1 ratio). Owner and location coverage above 80%.",
+  },
+  {
+    domain: "design" as const,
+    label: "Design",
+    tables: [
+      { table: "cmdb_ci_business_app", available: true, count: 287 },
+      { table: "cmdb_application_product_model", available: false, count: 0 },
+    ],
+    evidence: "Business apps registered, but APM (cmdb_application_product_model) is not deployed — product-model lineage is missing.",
+  },
+  {
+    domain: "build" as const,
+    label: "Build",
+    tables: [
+      { table: "cmdb_ci_service_discovered", available: true, count: 76 },
+      { table: "cmdb_ci_service_auto", available: true, count: 14 },
+      { table: "cmdb_ci_appl", available: true, count: 2140 },
+    ],
+    evidence: "Service Mapping is installed but the automated-services table is shallow — discovery patterns aren't covering the long tail of business apps.",
+  },
+  {
+    domain: "technical-services" as const,
+    label: "Manage Technical Services",
+    tables: [
+      { table: "cmdb_ci_service_technical", available: true, count: 71 },
+      { table: "service_offering", available: true, count: 24 },
+      { table: "sla_definition", available: true, count: 18 },
+    ],
+    evidence: "Technical services and offerings exist, SLA definitions are sparse but present. Workable as the operational layer.",
+  },
+  {
+    domain: "sell-consume" as const,
+    label: "Sell / Consume Services",
+    tables: [
+      { table: "cmdb_ci_service_business", available: true, count: 12 },
+      { table: "contract", available: true, count: 89 },
+      { table: "sn_consumer", available: false, count: 0 },
+    ],
+    evidence: "Business service portfolio is thin (12 entries) and the consumer registry is unreachable — consumer-contract traceability is broken.",
+  },
+];
+
+function getDemoAnalysis(): Analysis {
+  // Mirror the scoring formula from src/app/api/servicenow/analyze/route.ts
+  const domains: DomainScore[] = demoDomainsRaw.map((raw) => {
+    const available = raw.tables.filter((t) => t.available).length;
+    const records = raw.tables.reduce((sum, t) => sum + Math.min(t.count, 500), 0);
+    const coverage = available / raw.tables.length;
+    const score = Math.max(20, Math.min(92, Math.round(coverage * 62 + Math.min(records / 24, 30))));
+    return {
+      domain: raw.domain,
+      label: raw.label,
+      score,
+      stage: scoreToStage(score),
+      blockers: Math.max(0, Math.round((100 - score) / 11)),
+      evidence: raw.evidence,
+      tables: raw.tables,
+    };
+  });
+
+  const overallScore = Math.round(domains.reduce((sum, d) => sum + d.score, 0) / domains.length);
+  const globalStage = scoreToStage(Math.min(...domains.map((d) => d.score)));
+  const weakest = [...domains].sort((a, b) => a.score - b.score)[0];
+  // Engine expects tables to be defined; demoDomainsRaw always provides them.
+  const enginePayload = domains.map((d) => ({ ...d, tables: d.tables ?? [] }));
+  const agents = buildAgents({
+    domains: enginePayload,
+    overallScore,
+    globalStage,
+    weakest: { ...weakest, tables: weakest.tables ?? [] },
+  }) as Agent[];
+
+  return {
+    instanceName: "Northwind Bank",
+    instanceUrl: "https://northwind.service-now.com",
+    overallScore,
+    globalStage,
+    progressToNext: Math.max(0, Math.min(100, overallScore - 40)),
+    csdmVersion: "CSDM 5.0",
+    generatedAt: new Date(Date.now() - 90 * 1000).toISOString(),
+    domains,
+    agents,
+    insights: agents.flatMap((agent) => agent.insights.slice(0, 1)),
+  };
+}
+
 
 export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -249,7 +240,7 @@ export default function Home() {
       <TopBar
         instanceName={analysis?.instanceName}
         onConnect={() => setConnectOpen(true)}
-        onDemo={() => setAnalysis(demoAnalysis)}
+        onDemo={() => setAnalysis(getDemoAnalysis())}
         onSignOut={() => setLoggedIn(false)}
       />
       <Tabs current={tab} onChange={setTab} />
@@ -261,7 +252,7 @@ export default function Home() {
             ranked={ranked}
             totalBlockers={totalBlockers}
             onConnect={() => setConnectOpen(true)}
-            onDemo={() => setAnalysis(demoAnalysis)}
+            onDemo={() => setAnalysis(getDemoAnalysis())}
             onJump={(t) => setTab(t)}
           />
         )}
@@ -332,7 +323,7 @@ function TopBar({
             <>
               <Slash />
               <span className="hidden items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-2 py-1 text-[11.5px] text-[var(--text-2)] md:inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)] shadow-[0_0_8px_var(--success)]" />
+                <span className="csdm-pulse h-1.5 w-1.5 rounded-full bg-[var(--success)] shadow-[0_0_8px_var(--success)]" />
                 {instanceName}
               </span>
             </>
@@ -428,9 +419,17 @@ function Overview({
           <h1 className="text-[24px] font-semibold tracking-tight md:text-[28px]">
             {analysis.instanceName}
           </h1>
-          <p className="text-[13px] text-[var(--text-2)]">
-            {analysis.csdmVersion} · {stageLabels[analysis.globalStage]} maturity ·{" "}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[var(--text-2)]">
+            <span>{analysis.csdmVersion}</span>
+            <span className="text-[var(--text-3)]">·</span>
+            <span>{stageLabels[analysis.globalStage]} maturity</span>
+            <span className="text-[var(--text-3)]">·</span>
             <span className="font-mono text-[var(--text-3)]">{analysis.instanceUrl}</span>
+            <span className="text-[var(--text-3)]">·</span>
+            <span className="inline-flex items-center gap-1.5 text-[var(--text-3)]">
+              <span className="csdm-pulse h-1.5 w-1.5 rounded-full bg-[var(--success)] shadow-[0_0_8px_var(--success)]" />
+              Updated {formatRelative(new Date(analysis.generatedAt).getTime())}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -456,8 +455,9 @@ function Overview({
           label="Overall score"
           value={String(analysis.overallScore)}
           unit="/100"
-          delta={`+${analysis.progressToNext}% to next`}
+          delta={`${analysis.progressToNext} pts to next stage`}
           color={scoreColor(analysis.overallScore)}
+          trend={analysis.overallScore >= 66 ? "up" : analysis.overallScore >= 48 ? "flat" : "down"}
         />
         <MetricTile
           icon={<TrendingUp className="h-3.5 w-3.5" />}
@@ -471,7 +471,7 @@ function Overview({
           label="Domains scored"
           value={String(analysis.domains.length)}
           unit="/5"
-          delta="Anchor table probe"
+          delta={`${analysis.domains.filter((d) => d.score >= 75).length} at Walk+`}
         />
         <MetricTile
           icon={<Boxes className="h-3.5 w-3.5" />}
@@ -479,7 +479,8 @@ function Overview({
           value={String(totalBlockers)}
           unit=""
           delta={`${ranked[0]?.label ?? "—"} weakest`}
-          color="var(--danger)"
+          color={totalBlockers > 10 ? "var(--danger)" : totalBlockers > 5 ? "var(--warn)" : "var(--success)"}
+          trend={totalBlockers > 10 ? "down" : totalBlockers > 5 ? "flat" : "up"}
         />
       </div>
 
@@ -547,10 +548,58 @@ function MapTab({ analysis }: { analysis: Analysis | null }) {
 
 function DomainsTab({ analysis }: { analysis: Analysis | null }) {
   if (!analysis) return <EmptyState />;
+  const ordered = domainOrder.map((id) => analysis.domains.find((d) => d.domain === id)!).filter(Boolean);
   return (
-    <Card title="CSDM 5.0 domains" subtitle="Anchor-table probe + score">
-      <DomainTable domains={domainOrder.map((id) => analysis.domains.find((d) => d.domain === id)!).filter(Boolean)} />
-    </Card>
+    <div className="space-y-3">
+      <Card title="CSDM 5.0 domains" subtitle="Anchor-table probe + score">
+        <DomainTable domains={ordered} />
+      </Card>
+      <Card title="Anchor tables" subtitle="Per-domain probe response (Table API)">
+        <div className="grid grid-cols-1 gap-px bg-[var(--border)] md:grid-cols-2">
+          {ordered.map((d) => (
+            <DomainAnchorPanel key={d.domain} domain={d} />
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function DomainAnchorPanel({ domain }: { domain: DomainScore }) {
+  const tables = domain.tables ?? [];
+  const reachable = tables.filter((t) => t.available).length;
+  return (
+    <div className="bg-[var(--bg-elev-1)] p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-[12.5px] font-semibold tracking-tight">{domain.label}</p>
+        <span className="font-mono text-[10.5px] text-[var(--text-3)] tabular-nums">
+          {reachable}/{tables.length} reachable
+        </span>
+      </div>
+      {tables.length === 0 ? (
+        <p className="mt-2 text-[11.5px] text-[var(--text-3)]">No probe data — load demo or run a live analysis.</p>
+      ) : (
+        <ul className="mt-2.5 space-y-1">
+          {tables.map((t) => (
+            <li
+              key={t.table}
+              className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-2.5 py-1.5"
+            >
+              <span className="flex items-center gap-2 truncate">
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: t.available ? "var(--success)" : "var(--danger)" }}
+                />
+                <span className="truncate font-mono text-[11px] text-[var(--text-2)]">{t.table}</span>
+              </span>
+              <span className="font-mono text-[10.5px] text-[var(--text-3)] tabular-nums">
+                {t.available ? `${t.count} rec` : "n/a"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -647,6 +696,7 @@ function MetricTile({
   unit,
   delta,
   color = "var(--text)",
+  trend,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -654,9 +704,12 @@ function MetricTile({
   unit: string;
   delta: string;
   color?: string;
+  trend?: "up" | "down" | "flat";
 }) {
+  const trendGlyph = trend === "up" ? "↑" : trend === "down" ? "↓" : trend === "flat" ? "·" : null;
+  const trendColor = trend === "up" ? "var(--success)" : trend === "down" ? "var(--danger)" : "var(--text-3)";
   return (
-    <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-elev-1)] p-4 transition-colors hover:border-[var(--border-strong)]">
+    <div className="group rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-elev-1)] p-4 transition-colors hover:border-[var(--border-strong)]">
       <div className="flex items-center gap-1.5 text-[var(--text-3)]">
         {icon}
         <span className="text-[11px] font-medium uppercase tracking-wider">{label}</span>
@@ -667,7 +720,14 @@ function MetricTile({
         </span>
         {unit && <span className="font-mono text-[13px] text-[var(--text-3)]">{unit}</span>}
       </div>
-      <p className="mt-2 text-[11.5px] text-[var(--text-2)]">{delta}</p>
+      <p className="mt-2 flex items-center gap-1 text-[11.5px] text-[var(--text-2)]">
+        {trendGlyph && (
+          <span className="font-mono text-[11px] tabular-nums" style={{ color: trendColor }}>
+            {trendGlyph}
+          </span>
+        )}
+        <span className="truncate">{delta}</span>
+      </p>
     </div>
   );
 }
@@ -781,28 +841,29 @@ function AgentMini({ agent }: { agent: Agent }) {
 }
 
 function ActivityFeed({ analysis, extended = false }: { analysis: Analysis; extended?: boolean }) {
+  const generatedAt = new Date(analysis.generatedAt).getTime();
   const items = [
     {
       icon: <Sparkles className="h-3.5 w-3.5" />,
       title: "Analysis generated",
       detail: `${analysis.csdmVersion} · score ${analysis.overallScore}/100`,
-      time: "now",
+      offsetSec: 0,
     },
-    ...analysis.agents.map((a) => ({
+    ...analysis.agents.map((a, idx) => ({
       icon: <Avatar text={a.avatar} size={16} bg={a.color} />,
       title: `${a.name} produced ${a.insights.length} insights`,
       detail: a.tagline,
-      time: "1m",
+      offsetSec: 12 + idx * 4,
     })),
     ...analysis.domains
       .slice()
       .sort((a, b) => a.score - b.score)
       .slice(0, extended ? 5 : 3)
-      .map((d) => ({
+      .map((d, idx) => ({
         icon: <Database className="h-3.5 w-3.5" />,
         title: `${d.label} scored ${d.score}`,
-        detail: `Stage ${stageLabels[d.stage]} · ${d.blockers} blockers`,
-        time: "2m",
+        detail: `Stage ${stageLabels[d.stage]} · ${d.blockers} blocker${d.blockers === 1 ? "" : "s"}`,
+        offsetSec: 24 + idx * 5,
       })),
   ];
 
@@ -817,43 +878,74 @@ function ActivityFeed({ analysis, extended = false }: { analysis: Analysis; exte
             <p className="truncate text-[12.5px] font-medium">{item.title}</p>
             <p className="truncate text-[11.5px] text-[var(--text-3)]">{item.detail}</p>
           </div>
-          <span className="font-mono text-[10.5px] text-[var(--text-3)]">{item.time}</span>
+          <span className="shrink-0 font-mono text-[10.5px] text-[var(--text-3)]">
+            {formatRelative(generatedAt - item.offsetSec * 1000)}
+          </span>
         </li>
       ))}
     </ul>
   );
 }
 
+function formatRelative(timestamp: number) {
+  const diff = Math.max(0, Date.now() - timestamp);
+  const sec = Math.round(diff / 1000);
+  if (sec < 10) return "just now";
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  return `${day}d ago`;
+}
+
 function EmptyState({ onConnect, onDemo }: { onConnect?: () => void; onDemo?: () => void }) {
   return (
-    <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--bg-elev-1)] p-8 text-center md:p-16">
-      <div className="mx-auto grid h-10 w-10 place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)]">
-        <Activity className="h-4 w-4 text-[var(--text-2)]" />
-      </div>
-      <h2 className="mt-4 text-[18px] font-semibold tracking-tight">No analysis yet</h2>
-      <p className="mx-auto mt-1.5 max-w-[420px] text-[13px] text-[var(--text-2)]">
-        Connect a ServiceNow instance, or load demo data to explore the CSDM 5.0 maturity dashboard.
-      </p>
-      {(onConnect || onDemo) && (
-        <div className="mt-6 flex items-center justify-center gap-2">
-          {onConnect && (
-            <button
-              onClick={onConnect}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--text)] px-3 py-1.5 text-[12.5px] font-medium text-black hover:bg-white"
-            >
-              <Plus className="h-3.5 w-3.5" /> Connect instance
-            </button>
+    <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-elev-1)]">
+      <div className="relative grid place-items-center px-6 py-12 text-center md:py-20">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(420px 220px at 50% 0%, rgba(94,106,210,0.10), transparent 70%), radial-gradient(360px 200px at 50% 100%, rgba(38,181,138,0.08), transparent 70%)",
+          }}
+        />
+        <div className="relative">
+          <div className="mx-auto grid h-11 w-11 place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <Activity className="h-4 w-4 text-[var(--text-2)]" />
+          </div>
+          <h2 className="mt-5 text-[20px] font-semibold tracking-tight">Score a ServiceNow instance</h2>
+          <p className="mx-auto mt-2 max-w-[460px] text-[13px] leading-relaxed text-[var(--text-2)]">
+            Probe the CSDM 5.0 anchor tables, score the five domains, and review the result with two specialist
+            agents — Pierrondi EA and ITOM Doctor.
+          </p>
+          {(onConnect || onDemo) && (
+            <div className="mt-7 flex flex-col items-center justify-center gap-2 sm:flex-row">
+              {onConnect && (
+                <button
+                  onClick={onConnect}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--text)] px-3.5 py-2 text-[12.5px] font-medium text-black hover:bg-white"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Connect instance
+                </button>
+              )}
+              {onDemo && (
+                <button
+                  onClick={onDemo}
+                  className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-3.5 py-2 text-[12.5px] hover:border-[var(--border-strong)]"
+                >
+                  Load demo data
+                </button>
+              )}
+            </div>
           )}
-          {onDemo && (
-            <button
-              onClick={onDemo}
-              className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)] px-3 py-1.5 text-[12.5px] hover:border-[var(--border-strong)]"
-            >
-              Load demo data
-            </button>
-          )}
+          <p className="mt-5 text-[11px] text-[var(--text-3)]">
+            Read-only · Basic auth · credentials never persisted server-side
+          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -876,15 +968,21 @@ function LoginScreen({
   return (
     <main className="relative z-10 grid min-h-screen place-items-center px-4 text-[var(--text)]">
       <div className="w-full max-w-[380px]">
-        <div className="mb-8 flex items-center gap-2.5">
-          <svg width="24" height="24" viewBox="0 0 76 65" fill="none" aria-hidden>
-            <path d="M37.527.5L75.054 65H0L37.527.5z" fill="currentColor" />
-          </svg>
+        <div className="mb-7 flex items-center gap-2.5">
+          <span className="grid h-7 w-7 place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-elev-1)]">
+            <svg width="14" height="14" viewBox="0 0 76 65" fill="none" aria-hidden>
+              <path d="M37.527.5L75.054 65H0L37.527.5z" fill="currentColor" />
+            </svg>
+          </span>
           <span className="text-[15px] font-semibold tracking-tight">CSDM3D</span>
+          <span className="ml-1 rounded border border-[var(--border)] bg-[var(--bg-elev-2)] px-1 py-px text-[9.5px] font-medium uppercase tracking-wider text-[var(--text-3)]">
+            CSDM 5.0
+          </span>
         </div>
-        <h1 className="text-[24px] font-semibold leading-tight tracking-tight">Sign in to your workspace</h1>
-        <p className="mt-2 text-[13px] text-[var(--text-2)]">
-          CSDM 5.0 maturity dashboard with two specialist agents.
+        <h1 className="text-[26px] font-semibold leading-tight tracking-tight">Welcome back</h1>
+        <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-2)]">
+          Score a ServiceNow instance against CSDM 5.0 and review the result with two specialist agents — Pierrondi EA
+          and ITOM Doctor.
         </p>
         <form
           onSubmit={(event) => {
@@ -893,18 +991,19 @@ function LoginScreen({
           }}
           className="mt-7 space-y-3"
         >
-          <Field label="Email" value={email} onChange={setEmail} type="email" />
-          <Field label="Password" value={password} onChange={setPassword} type="password" />
+          <Field label="Email" value={email} onChange={setEmail} type="email" placeholder="you@company.com" />
+          <Field label="Password" value={password} onChange={setPassword} type="password" placeholder="••••••••" />
           <button
             type="submit"
             className="mt-2 w-full rounded-md bg-[var(--text)] px-3 py-2.5 text-[13px] font-medium text-black hover:bg-white"
           >
-            Continue
+            Continue to workspace
           </button>
         </form>
-        <p className="mt-6 text-[11px] text-[var(--text-3)]">
-          Public demo · no credentials are persisted server-side.
-        </p>
+        <div className="mt-6 flex items-center gap-2 text-[11px] text-[var(--text-3)]">
+          <span className="h-1 w-1 rounded-full bg-[var(--success)]" />
+          Public demo · read-only Basic auth · credentials never persisted
+        </div>
       </div>
     </main>
   );
@@ -934,12 +1033,20 @@ function ConnectModal({
   onSubmit: (e: FormEvent) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-[460px] overflow-hidden rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--bg-elev-1)] shadow-2xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-[460px] overflow-hidden rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--bg-elev-1)] shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-          <div>
-            <p className="text-[10.5px] font-medium uppercase tracking-wider text-[var(--text-3)]">ServiceNow</p>
-            <h3 className="mt-0.5 text-[14px] font-semibold tracking-tight">Connect instance</h3>
+          <div className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-2)]">
+              <Database className="h-3.5 w-3.5" />
+            </span>
+            <div>
+              <p className="text-[10.5px] font-medium uppercase tracking-wider text-[var(--text-3)]">ServiceNow</p>
+              <h3 className="mt-0.5 text-[14px] font-semibold tracking-tight">Connect instance</h3>
+            </div>
           </div>
           <button onClick={onClose} className="rounded-md p-1 text-[var(--text-2)] hover:bg-[var(--bg-elev-2)]" aria-label="Close">
             <X className="h-4 w-4" />
@@ -952,13 +1059,27 @@ function ConnectModal({
           {error && (
             <p className="rounded-md border border-[#3a1f23] bg-[#23151a] px-3 py-2 text-[12px] text-[#ff8a8a]">{error}</p>
           )}
+          <div className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-3 py-2.5 text-[11px] text-[var(--text-3)]">
+            <p className="font-medium text-[var(--text-2)]">What we probe</p>
+            <p className="mt-1 leading-relaxed">
+              Read-only Table API call against the CSDM 5.0 anchor tables for each domain — no writes, no scheduled
+              jobs, credentials never stored.
+            </p>
+          </div>
           <div className="flex items-center justify-between gap-2 pt-1">
-            <p className="text-[11px] text-[var(--text-3)]">Probes CSDM 5.0 anchor tables via Table API.</p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-3 py-2 text-[12.5px] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-[var(--text)] px-3 py-2 text-[12.5px] font-medium text-black hover:bg-white disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--text)] px-3 py-2 text-[12.5px] font-medium text-black hover:bg-white disabled:opacity-60"
             >
+              {loading && <span className="h-3 w-3 animate-spin rounded-full border border-black/30 border-t-black" />}
               {loading ? "Analyzing…" : "Run analysis"}
             </button>
           </div>

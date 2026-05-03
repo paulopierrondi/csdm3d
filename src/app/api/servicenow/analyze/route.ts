@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildAgents, scoreToStage } from "@/lib/agents";
 
 type Stage = "foundation" | "crawl" | "walk" | "run" | "fly";
 type Domain = "foundational" | "design" | "build" | "technical-services" | "sell-consume";
@@ -93,91 +94,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function buildAgents({
-  domains,
-  overallScore,
-  globalStage,
-  weakest,
-}: {
-  domains: DomainResult[];
-  overallScore: number;
-  globalStage: Stage;
-  weakest: DomainResult;
-}) {
-  const stageLabel = stageLabels[globalStage];
-  const totalBlockers = domains.reduce((sum, d) => sum + d.blockers, 0);
-  const missingTables = domains.flatMap((d) => d.tables.filter((t) => !t.available).map((t) => `${d.label} · ${t.table}`));
-  const foundational = domains.find((d) => d.domain === "foundational");
-  const build = domains.find((d) => d.domain === "build");
-
-  return [
-    {
-      id: "pierrondi-ea",
-      name: "Paulo Pierrondi",
-      role: "Enterprise Architect",
-      avatar: "PP",
-      color: "#0b7285",
-      tagline: "Strategy, exec narrative, CSDM5 roadmap.",
-      insights: [
-        {
-          title: "Executive narrative",
-          detail: `This instance scored ${overallScore}/100 — global stage ${stageLabel}. Frame CSDM5 as the practical backbone for governance, ITOM automation and Now Assist trust. Sell incremental wins, not a multi-year transformation.`,
-        },
-        {
-          title: "Where to start",
-          detail: `${weakest.label} is the lowest-scoring domain (${weakest.score}). Make it the first remediation workshop and tie its outcome to a measurable business KPI.`,
-        },
-        {
-          title: "AI readiness implication",
-          detail: globalStage === "foundation" || globalStage === "crawl"
-            ? "Now Assist outputs are high-risk on this data shape. Use AI for explanation and prioritization, keep autonomous action governed."
-            : "Data shape is mature enough to scope a Now Assist pilot on a single, well-bounded use case. Avoid horizontal rollout until ownership and lifecycle fields harden.",
-        },
-      ],
-    },
-    {
-      id: "itom-doctor",
-      name: "ITOM Doctor",
-      role: "CMDB & Discovery Specialist",
-      avatar: "Rx",
-      color: "#7c3aed",
-      tagline: "CMDB health, Discovery coverage, Service Mapping signals.",
-      insights: [
-        {
-          title: "CMDB health",
-          detail: foundational
-            ? `Foundational layer at ${foundational.score}/100. ${foundational.blockers} blockers — focus on company, location and CI relationship completeness before scaling Discovery patterns.`
-            : "Foundational layer not measurable.",
-        },
-        {
-          title: "Discovery & Service Mapping",
-          detail: build
-            ? `Build domain at ${build.score}/100. Application Service population (cmdb_ci_service_discovered / _auto) is the leading indicator — low signal here means Service Mapping has not been run end-to-end.`
-            : "Build domain not measurable.",
-        },
-        {
-          title: "Missing anchors",
-          detail: missingTables.length === 0
-            ? "All CSDM5 anchor tables responded. Data shape is consistent with a baseline CMDB Health audit candidate."
-            : `${missingTables.length} CSDM5 anchor tables are unreachable for this user. Check role grants (snc_internal, itil) and table ACLs: ${missingTables.slice(0, 4).join(", ")}${missingTables.length > 4 ? "…" : ""}.`,
-        },
-        {
-          title: "Total blockers",
-          detail: `${totalBlockers} blockers across the 5 domains. Treat them as a backlog of CMDB Health dashboard remediations, not as a single program.`,
-        },
-      ],
-    },
-  ];
-}
-
-const stageLabels: Record<Stage, string> = {
-  foundation: "Foundation",
-  crawl: "Crawl",
-  walk: "Walk",
-  run: "Run",
-  fly: "Fly",
-};
-
 function normalizeInstanceUrl(value: unknown) {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
@@ -207,10 +123,3 @@ async function fetchTableCount(instanceUrl: string, username: string, password: 
   }
 }
 
-function scoreToStage(score: number): Stage {
-  if (score >= 90) return "fly";
-  if (score >= 78) return "run";
-  if (score >= 66) return "walk";
-  if (score >= 48) return "crawl";
-  return "foundation";
-}
