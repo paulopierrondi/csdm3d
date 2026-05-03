@@ -88,6 +88,14 @@ const demoAnalysis: Analysis = {
       stage: "walk",
       blockers: 1,
       evidence: "Company, location and core CI records have enough quality to support next-stage governance.",
+      tables: [
+        { table: "cmdb_ci", available: true, count: 18432 },
+        { table: "core_company", available: true, count: 312 },
+        { table: "cmn_location", available: true, count: 184 },
+        { table: "cmn_department", available: true, count: 96 },
+        { table: "sys_user_group", available: true, count: 248 },
+        { table: "cmdb_rel_ci", available: true, count: 12760 },
+      ],
     },
     {
       domain: "design",
@@ -96,6 +104,10 @@ const demoAnalysis: Analysis = {
       stage: "walk",
       blockers: 3,
       evidence: "Business application ownership and lifecycle fields need stronger consistency.",
+      tables: [
+        { table: "cmdb_ci_business_app", available: true, count: 312 },
+        { table: "cmdb_application_product_model", available: true, count: 86 },
+      ],
     },
     {
       domain: "build",
@@ -104,6 +116,11 @@ const demoAnalysis: Analysis = {
       stage: "crawl",
       blockers: 4,
       evidence: "Application services exist, but relationship depth is not strong enough for run-stage automation.",
+      tables: [
+        { table: "cmdb_ci_service_discovered", available: true, count: 184 },
+        { table: "cmdb_ci_service_auto", available: true, count: 78 },
+        { table: "cmdb_ci_appl", available: true, count: 1240 },
+      ],
     },
     {
       domain: "technical-services",
@@ -112,6 +129,11 @@ const demoAnalysis: Analysis = {
       stage: "walk",
       blockers: 2,
       evidence: "Technical services are visible, but service offering alignment still limits operational use.",
+      tables: [
+        { table: "cmdb_ci_service_technical", available: true, count: 142 },
+        { table: "service_offering", available: true, count: 64 },
+        { table: "sla_definition", available: true, count: 38 },
+      ],
     },
     {
       domain: "sell-consume",
@@ -120,6 +142,11 @@ const demoAnalysis: Analysis = {
       stage: "crawl",
       blockers: 5,
       evidence: "Customer-facing service portfolio traceability is the weakest maturity signal.",
+      tables: [
+        { table: "cmdb_ci_service_business", available: true, count: 28 },
+        { table: "contract", available: true, count: 76 },
+        { table: "sn_consumer", available: false, count: 0 },
+      ],
     },
   ],
   agents: [
@@ -443,9 +470,17 @@ function Overview({
           <h1 className="text-[24px] font-semibold tracking-tight md:text-[28px]">
             {analysis.instanceName}
           </h1>
-          <p className="text-[13px] text-[var(--text-2)]">
-            {analysis.csdmVersion} · {stageLabels[analysis.globalStage]} maturity ·{" "}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[var(--text-2)]">
+            <span>{analysis.csdmVersion}</span>
+            <span className="text-[var(--text-3)]">·</span>
+            <span>{stageLabels[analysis.globalStage]} maturity</span>
+            <span className="text-[var(--text-3)]">·</span>
             <span className="font-mono text-[var(--text-3)]">{analysis.instanceUrl}</span>
+            <span className="text-[var(--text-3)]">·</span>
+            <span className="inline-flex items-center gap-1.5 text-[var(--text-3)]">
+              <span className="csdm-pulse h-1.5 w-1.5 rounded-full bg-[var(--success)] shadow-[0_0_8px_var(--success)]" />
+              Updated {formatRelative(new Date(analysis.generatedAt).getTime())}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -564,10 +599,58 @@ function MapTab({ analysis }: { analysis: Analysis | null }) {
 
 function DomainsTab({ analysis }: { analysis: Analysis | null }) {
   if (!analysis) return <EmptyState />;
+  const ordered = domainOrder.map((id) => analysis.domains.find((d) => d.domain === id)!).filter(Boolean);
   return (
-    <Card title="CSDM 5.0 domains" subtitle="Anchor-table probe + score">
-      <DomainTable domains={domainOrder.map((id) => analysis.domains.find((d) => d.domain === id)!).filter(Boolean)} />
-    </Card>
+    <div className="space-y-3">
+      <Card title="CSDM 5.0 domains" subtitle="Anchor-table probe + score">
+        <DomainTable domains={ordered} />
+      </Card>
+      <Card title="Anchor tables" subtitle="Per-domain probe response (Table API)">
+        <div className="grid grid-cols-1 gap-px bg-[var(--border)] md:grid-cols-2">
+          {ordered.map((d) => (
+            <DomainAnchorPanel key={d.domain} domain={d} />
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function DomainAnchorPanel({ domain }: { domain: DomainScore }) {
+  const tables = domain.tables ?? [];
+  const reachable = tables.filter((t) => t.available).length;
+  return (
+    <div className="bg-[var(--bg-elev-1)] p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-[12.5px] font-semibold tracking-tight">{domain.label}</p>
+        <span className="font-mono text-[10.5px] text-[var(--text-3)] tabular-nums">
+          {reachable}/{tables.length} reachable
+        </span>
+      </div>
+      {tables.length === 0 ? (
+        <p className="mt-2 text-[11.5px] text-[var(--text-3)]">No probe data — load demo or run a live analysis.</p>
+      ) : (
+        <ul className="mt-2.5 space-y-1">
+          {tables.map((t) => (
+            <li
+              key={t.table}
+              className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-elev-2)] px-2.5 py-1.5"
+            >
+              <span className="flex items-center gap-2 truncate">
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: t.available ? "var(--success)" : "var(--danger)" }}
+                />
+                <span className="truncate font-mono text-[11px] text-[var(--text-2)]">{t.table}</span>
+              </span>
+              <span className="font-mono text-[10.5px] text-[var(--text-3)] tabular-nums">
+                {t.available ? `${t.count} rec` : "n/a"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
