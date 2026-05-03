@@ -1,0 +1,5 @@
+CSDM 5.0 não precisa ser planilha de auditoria.
+
+Conecta a instância → 5 domínios são scoreados → 2 agentes especialistas (Pierrondi EA + ITOM Doctor) traduzem o resultado em narrativa executiva e plano de ataque de CMDB.
+
+Tudo num mapa 3D do CMDB. 👇
