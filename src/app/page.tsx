@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { Csdm3dUniverse } from "@/components/Csdm3dUniverse";
+import { buildAgents, scoreToStage } from "@/lib/agents";
 
 type Stage = "foundation" | "crawl" | "walk" | "run" | "fly";
 type Domain = "foundational" | "design" | "build" | "technical-services" | "sell-consume";
@@ -72,163 +73,111 @@ const stageLabels: Record<Stage, string> = {
 
 const domainOrder: Domain[] = ["foundational", "design", "build", "technical-services", "sell-consume"];
 
-const demoAnalysis: Analysis = {
-  instanceName: "Demo Customer",
-  instanceUrl: "https://demo.service-now.com",
-  overallScore: 70,
-  globalStage: "walk",
-  progressToNext: 8,
-  csdmVersion: "CSDM 5.0",
-  generatedAt: new Date().toISOString(),
-  domains: [
-    {
-      domain: "foundational",
-      label: "Foundational Data",
-      score: 84,
-      stage: "walk",
-      blockers: 1,
-      evidence: "Company, location and core CI records have enough quality to support next-stage governance.",
-      tables: [
-        { table: "cmdb_ci", available: true, count: 18432 },
-        { table: "core_company", available: true, count: 312 },
-        { table: "cmn_location", available: true, count: 184 },
-        { table: "cmn_department", available: true, count: 96 },
-        { table: "sys_user_group", available: true, count: 248 },
-        { table: "cmdb_rel_ci", available: true, count: 12760 },
-      ],
-    },
-    {
-      domain: "design",
-      label: "Design",
-      score: 70,
-      stage: "walk",
-      blockers: 3,
-      evidence: "Business application ownership and lifecycle fields need stronger consistency.",
-      tables: [
-        { table: "cmdb_ci_business_app", available: true, count: 312 },
-        { table: "cmdb_application_product_model", available: true, count: 86 },
-      ],
-    },
-    {
-      domain: "build",
-      label: "Build",
-      score: 64,
-      stage: "crawl",
-      blockers: 4,
-      evidence: "Application services exist, but relationship depth is not strong enough for run-stage automation.",
-      tables: [
-        { table: "cmdb_ci_service_discovered", available: true, count: 184 },
-        { table: "cmdb_ci_service_auto", available: true, count: 78 },
-        { table: "cmdb_ci_appl", available: true, count: 1240 },
-      ],
-    },
-    {
-      domain: "technical-services",
-      label: "Manage Technical Services",
-      score: 76,
-      stage: "walk",
-      blockers: 2,
-      evidence: "Technical services are visible, but service offering alignment still limits operational use.",
-      tables: [
-        { table: "cmdb_ci_service_technical", available: true, count: 142 },
-        { table: "service_offering", available: true, count: 64 },
-        { table: "sla_definition", available: true, count: 38 },
-      ],
-    },
-    {
-      domain: "sell-consume",
-      label: "Sell / Consume Services",
-      score: 57,
-      stage: "crawl",
-      blockers: 5,
-      evidence: "Customer-facing service portfolio traceability is the weakest maturity signal.",
-      tables: [
-        { table: "cmdb_ci_service_business", available: true, count: 28 },
-        { table: "contract", available: true, count: 76 },
-        { table: "sn_consumer", available: false, count: 0 },
-      ],
-    },
-  ],
-  agents: [
-    {
-      id: "pierrondi-ea",
-      name: "Paulo Pierrondi",
-      role: "Enterprise Architect",
-      avatar: "PP",
-      color: "#5e6ad2",
-      tagline: "Strategy · Walk stage · 8 pts to Run",
-      insights: [
-        {
-          title: "Executive narrative",
-          detail:
-            "Score 70/100 — Walk. The instance is governance-ready; pivot the narrative from \"fix the CMDB\" to \"monetize CSDM\" via Service Mapping, SAM and AI-assisted operations.",
-        },
-        {
-          title: "Where to start",
-          detail:
-            "Sell / Consume Services is the lowest-scoring domain (57). Make it the first remediation workshop. Tie the outcome to a measurable KPI — % of consumer contracts traceable to a business service.",
-        },
-        {
-          title: "AI readiness implication",
-          detail:
-            "Data shape can support a single, well-bounded Now Assist pilot. Pick one workflow with crisp ownership (incident summary, change risk) and resist horizontal rollout until ownership fields harden.",
-        },
-        {
-          title: "Roadmap",
-          detail:
-            "Roadmap to Run: 8 pts to close. Spread between strongest (Foundational Data · 84) and weakest (Sell / Consume Services · 57) is 27 pts — uneven maturity will block the next rung until it narrows.",
-        },
-      ],
-    },
-    {
-      id: "itom-doctor",
-      name: "ITOM Doctor",
-      role: "CMDB & Discovery Specialist",
-      avatar: "Rx",
-      color: "#26b58a",
-      tagline: "CMDB · Discovery · Service Mapping · 70/100 design layer",
-      insights: [
-        {
-          title: "CMDB health",
-          detail:
-            "Foundational layer at 84/100 · 1 blocker. Baseline is solid — push for CI relationship density (cmdb_rel_ci) and reduce orphan CIs before scaling Discovery patterns.",
-        },
-        {
-          title: "Discovery & Service Mapping",
-          detail:
-            "Build domain at 64/100. Application Service population is present — the next gap is depth: contains/runs-on relationship density and pattern coverage on the long-tail of business apps.",
-        },
-        {
-          title: "Service catalog alignment",
-          detail:
-            "Sell / Consume (57) is dragging behind Technical Services (76). Technical CIs exist but their alignment to consumer-facing offerings is broken — fix the service offering ↔ business service join before scaling Now Assist on customer workflows.",
-        },
-        {
-          title: "Missing anchors",
-          detail:
-            "All CSDM 5.0 anchor tables responded. Data shape is consistent with a baseline CMDB Health audit candidate — no role-grant remediation needed before the next probe.",
-        },
-        {
-          title: "Blocker backlog",
-          detail:
-            "15 blockers across the 5 domains. Concentrate the first sprint on Sell / Consume Services (5 of 15) — clearing it raises the global score the fastest.",
-        },
-      ],
-    },
-  ],
-  insights: [
-    {
-      title: "Executive narrative",
-      detail:
-        "Score 70/100 — Walk. The instance is governance-ready; pivot the narrative from \"fix the CMDB\" to \"monetize CSDM\" via Service Mapping, SAM and AI-assisted operations.",
-    },
-    {
-      title: "CMDB health",
-      detail:
-        "Foundational layer at 84/100 · 1 blocker. Baseline is solid — push for CI relationship density.",
-    },
-  ],
-};
+// Realistic CMDB story for the Load demo button — counts and reachability
+// chosen so the engine produces a sharp, opinionated narrative:
+//   • Foundational baseline solid (3:1 cmdb_rel_ci ratio, healthy seed)
+//   • APM never deployed → cmdb_application_product_model unreachable
+//   • Service Mapping ran but very lightly → cmdb_ci_service_auto count low
+//   • Business service portfolio is thin → sn_consumer unreachable
+const demoDomainsRaw = [
+  {
+    domain: "foundational" as const,
+    label: "Foundational Data",
+    tables: [
+      { table: "cmdb_ci", available: true, count: 47210 },
+      { table: "core_company", available: true, count: 28 },
+      { table: "cmn_location", available: true, count: 412 },
+      { table: "cmn_department", available: true, count: 124 },
+      { table: "sys_user_group", available: true, count: 386 },
+      { table: "cmdb_rel_ci", available: true, count: 142800 },
+    ],
+    evidence: "CI seed and relationship density healthy (3:1 ratio). Owner and location coverage above 80%.",
+  },
+  {
+    domain: "design" as const,
+    label: "Design",
+    tables: [
+      { table: "cmdb_ci_business_app", available: true, count: 287 },
+      { table: "cmdb_application_product_model", available: false, count: 0 },
+    ],
+    evidence: "Business apps registered, but APM (cmdb_application_product_model) is not deployed — product-model lineage is missing.",
+  },
+  {
+    domain: "build" as const,
+    label: "Build",
+    tables: [
+      { table: "cmdb_ci_service_discovered", available: true, count: 76 },
+      { table: "cmdb_ci_service_auto", available: true, count: 14 },
+      { table: "cmdb_ci_appl", available: true, count: 2140 },
+    ],
+    evidence: "Service Mapping is installed but the automated-services table is shallow — discovery patterns aren't covering the long tail of business apps.",
+  },
+  {
+    domain: "technical-services" as const,
+    label: "Manage Technical Services",
+    tables: [
+      { table: "cmdb_ci_service_technical", available: true, count: 71 },
+      { table: "service_offering", available: true, count: 24 },
+      { table: "sla_definition", available: true, count: 18 },
+    ],
+    evidence: "Technical services and offerings exist, SLA definitions are sparse but present. Workable as the operational layer.",
+  },
+  {
+    domain: "sell-consume" as const,
+    label: "Sell / Consume Services",
+    tables: [
+      { table: "cmdb_ci_service_business", available: true, count: 12 },
+      { table: "contract", available: true, count: 89 },
+      { table: "sn_consumer", available: false, count: 0 },
+    ],
+    evidence: "Business service portfolio is thin (12 entries) and the consumer registry is unreachable — consumer-contract traceability is broken.",
+  },
+];
+
+function getDemoAnalysis(): Analysis {
+  // Mirror the scoring formula from src/app/api/servicenow/analyze/route.ts
+  const domains: DomainScore[] = demoDomainsRaw.map((raw) => {
+    const available = raw.tables.filter((t) => t.available).length;
+    const records = raw.tables.reduce((sum, t) => sum + Math.min(t.count, 500), 0);
+    const coverage = available / raw.tables.length;
+    const score = Math.max(20, Math.min(92, Math.round(coverage * 62 + Math.min(records / 24, 30))));
+    return {
+      domain: raw.domain,
+      label: raw.label,
+      score,
+      stage: scoreToStage(score),
+      blockers: Math.max(0, Math.round((100 - score) / 11)),
+      evidence: raw.evidence,
+      tables: raw.tables,
+    };
+  });
+
+  const overallScore = Math.round(domains.reduce((sum, d) => sum + d.score, 0) / domains.length);
+  const globalStage = scoreToStage(Math.min(...domains.map((d) => d.score)));
+  const weakest = [...domains].sort((a, b) => a.score - b.score)[0];
+  // Engine expects tables to be defined; demoDomainsRaw always provides them.
+  const enginePayload = domains.map((d) => ({ ...d, tables: d.tables ?? [] }));
+  const agents = buildAgents({
+    domains: enginePayload,
+    overallScore,
+    globalStage,
+    weakest: { ...weakest, tables: weakest.tables ?? [] },
+  }) as Agent[];
+
+  return {
+    instanceName: "Northwind Bank",
+    instanceUrl: "https://northwind.service-now.com",
+    overallScore,
+    globalStage,
+    progressToNext: Math.max(0, Math.min(100, overallScore - 40)),
+    csdmVersion: "CSDM 5.0",
+    generatedAt: new Date(Date.now() - 90 * 1000).toISOString(),
+    domains,
+    agents,
+    insights: agents.flatMap((agent) => agent.insights.slice(0, 1)),
+  };
+}
+
 
 export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -291,7 +240,7 @@ export default function Home() {
       <TopBar
         instanceName={analysis?.instanceName}
         onConnect={() => setConnectOpen(true)}
-        onDemo={() => setAnalysis(demoAnalysis)}
+        onDemo={() => setAnalysis(getDemoAnalysis())}
         onSignOut={() => setLoggedIn(false)}
       />
       <Tabs current={tab} onChange={setTab} />
@@ -303,7 +252,7 @@ export default function Home() {
             ranked={ranked}
             totalBlockers={totalBlockers}
             onConnect={() => setConnectOpen(true)}
-            onDemo={() => setAnalysis(demoAnalysis)}
+            onDemo={() => setAnalysis(getDemoAnalysis())}
             onJump={(t) => setTab(t)}
           />
         )}
