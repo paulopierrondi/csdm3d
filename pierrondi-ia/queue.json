@@ -1,0 +1,206 @@
+{
+  "$schema_version": "1.0",
+  "campaign_id": "csdm3d-launch-2026-05",
+  "publisher_handle": "@pierrondi",
+  "timezone": "America/Sao_Paulo",
+  "demo_url": "${DEMO_URL}",
+  "repo_raw_base": "https://github.com/paulopierrondi/csdm3d/raw/main",
+
+  "voice": {
+    "language_primary": "pt-BR",
+    "tone": "first_person, opinionated, no hedging",
+    "persona": "Paulo Pierrondi, Enterprise Architect — fala com autoridade sobre CSDM e ITOM",
+    "forbidden_words": ["revolucionário", "game-changer", "disruptivo", "incrível"],
+    "rules": [
+      "Texto deve ser publicado idêntico ao body — não reescrever para soar mais natural.",
+      "Não usar hedging (talvez, acho que, parece que).",
+      "Sem emoji em LinkedIn. Em X só os já presentes no body."
+    ]
+  },
+
+  "kill_switch": {
+    "applies_to_post_id": "post-1-hero",
+    "metric": "impressions",
+    "threshold": 1000,
+    "window_hours": 4,
+    "action": "republish_with_alt_hook",
+    "alt_hook_first_line": "Olha o tipo de coisa que dá pra fazer com IA hoje:",
+    "republish_at_local": "next_day_09:00"
+  },
+
+  "reply_policy": [
+    {
+      "trigger": "technical_question",
+      "action": "diagnose_short_with_anchor_term",
+      "max_length_chars": 280,
+      "example": "Provável raiz: cmdb_rel_ci abaixo de 2:1. Discovery não rodou full sweep recente."
+    },
+    {
+      "trigger": "commercial_question",
+      "action": "redirect_to_demo_link",
+      "note": "Não vendemos hoje — projeto open-demo. Apontar ${DEMO_URL}."
+    },
+    {
+      "trigger": "user_shares_screenshot_of_their_result",
+      "action": "mini_diagnosis_using_app_terms",
+      "max_lines": 4,
+      "must_use_terms": ["stage", "blocker", "missing_anchor_table"],
+      "must_not": "inventar números — usar apenas o que aparecer no print"
+    },
+    {
+      "trigger": "request_for_credit_or_attribution",
+      "action": "credit_repo",
+      "boilerplate": "Open source · github.com/paulopierrondi/csdm3d"
+    }
+  ],
+
+  "metrics_targets": {
+    "post-1-hero": { "impressions_24h": 8000, "reposts_24h": 50 },
+    "post-3-thread": { "link_ctr": 0.025, "thread_completion_rate": 0.30 },
+    "post-6-cta": { "qualified_replies": 3 }
+  },
+
+  "posts": [
+    {
+      "id": "post-1-hero",
+      "scheduled_at_local": "2026-05-03T19:30:00-03:00",
+      "channel": "x",
+      "type": "single",
+      "body": "CSDM 5.0 não precisa ser planilha de auditoria.\n\nConecta a instância → 5 domínios são scoreados → 2 agentes especialistas (Pierrondi EA + ITOM Doctor) traduzem o resultado em narrativa executiva e plano de ataque de CMDB.\n\nTudo num mapa 3D do CMDB. 👇",
+      "char_count": 277,
+      "media": [
+        {
+          "path": "public/csdm3d-assets/csdm3d-clip-5s.mp4",
+          "url": "https://github.com/paulopierrondi/csdm3d/raw/main/public/csdm3d-assets/csdm3d-clip-5s.mp4",
+          "type": "video/mp4",
+          "duration_seconds": 5,
+          "alt_text": "Mapa 3D do CSDM 5.0 com cinco plataformas iluminadas — uma por domínio. Partículas brancas viajam entre as plataformas e dois agentes especialistas comentam o resultado."
+        }
+      ],
+      "post_actions": ["pin_to_profile_until_campaign_ends"]
+    },
+
+    {
+      "id": "post-2-quote",
+      "scheduled_at_local": "2026-05-03T21:30:00-03:00",
+      "channel": "x",
+      "type": "quote_tweet",
+      "quotes_post_id": "post-1-hero",
+      "body": "Detalhe que ninguém pede mas todo mundo quer:\n\ncada insight muda conforme o stage da instância (Foundation → Crawl → Walk → Run → Fly), o gap até o próximo nível, e quais tabelas-âncora estão ausentes.\n\nÉ opinião, não relatório. ☝️",
+      "char_count": 244,
+      "media": []
+    },
+
+    {
+      "id": "post-3-thread",
+      "scheduled_at_local": "2026-05-04T09:30:00-03:00",
+      "channel": "x",
+      "type": "thread",
+      "tweets": [
+        {
+          "position": "1/5",
+          "body": "Construí o CSDM3D: você conecta uma instância ServiceNow e em segundos vê a maturidade CSDM 5.0 num mapa 3D do CMDB, com dois agentes especialistas explicando o que cada score significa.\n\n🎥 5 segundos:",
+          "media": [
+            {
+              "path": "public/csdm3d-assets/csdm3d-clip-5s.mp4",
+              "url": "https://github.com/paulopierrondi/csdm3d/raw/main/public/csdm3d-assets/csdm3d-clip-5s.mp4",
+              "type": "video/mp4",
+              "duration_seconds": 5
+            }
+          ]
+        },
+        {
+          "position": "2/5",
+          "body": "Como funciona: o backend faz probe read-only nas tabelas-âncora de cada um dos 5 domínios CSDM 5.0 (cmdb_ci, cmdb_ci_business_app, cmdb_ci_service_discovered, etc.), calcula score 0–100 e posiciona na escada Foundation → Crawl → Walk → Run → Fly.\n\nSem job agendado. Sem dado persistido."
+        },
+        {
+          "position": "3/5",
+          "body": "Os dois agentes:\n\n🟣 Pierrondi EA — narrativa executiva, onde começar (KPI mensurável), readiness de Now Assist, roadmap até o próximo stage.\n\n🟢 ITOM Doctor — saúde do CMDB, sinal de Service Mapping, alinhamento de catálogo, tabelas-âncora ausentes.",
+          "media": [
+            {
+              "path": "public/csdm3d-assets/02-workspace-overview.png",
+              "url": "https://github.com/paulopierrondi/csdm3d/raw/main/public/csdm3d-assets/02-workspace-overview.png",
+              "type": "image/png",
+              "alt_text": "Dashboard do CSDM3D mostrando os scores dos 5 domínios e os dois agentes especialistas."
+            }
+          ]
+        },
+        {
+          "position": "4/5",
+          "body": "O conteúdo NÃO é genérico.\n\nFaltou cmdb_ci_service_business?\n\"single highest-leverage gap on the instance\"\n\ncmdb_ci_service_auto baixo?\n\"Service Mapping is installed but the automated-services table is shallow\"\n\nA leitura sai pronta para slide de board."
+        },
+        {
+          "position": "5/5",
+          "body": "Stack: Next.js 16 (App Router), React 19, Tailwind v4, three.js + react-three-fiber, ServiceNow Table API.\n\nDemo público (sem credenciais persistidas):\n${DEMO_URL}\n\nAceitando feedback. 🛠️"
+        }
+      ]
+    },
+
+    {
+      "id": "post-4-stack",
+      "scheduled_at_local": "2026-05-04T19:00:00-03:00",
+      "channel": "x",
+      "type": "single",
+      "body": "A parte 3D do CSDM3D é react-three-fiber sobre three.js:\n\n• 5 domínios = 5 plataformas\n• tabelas-âncora = nós com pip RAG\n• curvas Bézier coloridas pela média de score\n• 130 partículas instanced; velocidade escala com o score global\n\nTodo o resto é dado bem cuidado.",
+      "char_count": 279,
+      "media": [
+        {
+          "path": "public/csdm3d-assets/03-csdm3d-universe.png",
+          "url": "https://github.com/paulopierrondi/csdm3d/raw/main/public/csdm3d-assets/03-csdm3d-universe.png",
+          "type": "image/png",
+          "alt_text": "Captura da cena 3D do CSDM3D com as cinco plataformas dos domínios e curvas de conexão."
+        }
+      ]
+    },
+
+    {
+      "id": "post-5-reflection",
+      "scheduled_at_local": "2026-05-06T09:00:00-03:00",
+      "channel": "x",
+      "type": "single",
+      "body": "Aprendizado construindo o CSDM3D:\n\nvalor de \"IA\" raramente vem do modelo. Vem de:\n\n1. dado certo na entrada\n2. heurística opinativa no meio\n3. linguagem direta na saída\n\nModelo grande sem isso = relatório bonito, opinião nenhuma.",
+      "char_count": 232,
+      "media": [
+        {
+          "path": "public/csdm3d-assets/03-dashboard-insights.png",
+          "url": "https://github.com/paulopierrondi/csdm3d/raw/main/public/csdm3d-assets/03-dashboard-insights.png",
+          "type": "image/png",
+          "alt_text": "Painel de insights do CSDM3D mostrando os agentes Pierrondi EA e ITOM Doctor com suas análises."
+        }
+      ]
+    },
+
+    {
+      "id": "post-6-cta",
+      "scheduled_at_local": "2026-05-07T18:00:00-03:00",
+      "channel": "x",
+      "type": "single",
+      "body": "Recap rápido do CSDM3D, agora que rodou por 4 dias:\n\n✓ scoring em segundos\n✓ 2 agentes que dizem onde começar\n✓ mapa 3D pra apresentar pra board\n✓ zero credencial persistida\n\nQuem testar e mandar print do resultado, eu comento o plano de ataque.\n\n${DEMO_URL}",
+      "char_count": 266,
+      "media": [
+        {
+          "path": "public/csdm3d-assets/csdm3d-clip-5s.mp4",
+          "url": "https://github.com/paulopierrondi/csdm3d/raw/main/public/csdm3d-assets/csdm3d-clip-5s.mp4",
+          "type": "video/mp4"
+        }
+      ],
+      "post_actions": ["enable_reply_monitoring_for_screenshots"]
+    },
+
+    {
+      "id": "linkedin-mirror",
+      "scheduled_at_local": "2026-05-03T20:00:00-03:00",
+      "channel": "linkedin",
+      "type": "single",
+      "body": "Lancei o CSDM3D este fim de semana.\n\nVocê conecta uma instância ServiceNow, ele faz probe read-only nas tabelas-âncora dos 5 domínios CSDM 5.0, calcula score 0–100 por domínio e te entrega:\n\n• um mapa 3D do CMDB\n• dois agentes especialistas que leem o resultado:\n   — Pierrondi EA: narrativa executiva, onde começar, readiness de Now Assist, roadmap\n   — ITOM Doctor: saúde do CMDB, Service Mapping, tabelas-âncora ausentes\n\nA parte que mais me orgulha não é o 3D. É que cada insight muda conforme o stage da instância, o gap até o próximo nível e quais tabelas estão ausentes — então a saída soa como diagnóstico de consultor sênior, não relatório genérico.\n\nStack: Next.js 16, React 19, Tailwind v4, three.js, react-three-fiber, ServiceNow Table API.\n\nRead-only. Credenciais nunca persistidas server-side.\n\nDemo: ${DEMO_URL}\n\n#CSDM #ServiceNow #CMDB #ITOM #NowAssist #EnterpriseArchitecture",
+      "media": [
+        {
+          "path": "public/csdm3d-assets/csdm3d-clip-5s.gif",
+          "url": "https://github.com/paulopierrondi/csdm3d/raw/main/public/csdm3d-assets/csdm3d-clip-5s.gif",
+          "type": "image/gif",
+          "duration_seconds": 5
+        }
+      ]
+    }
+  ]
+}
