@@ -9,9 +9,10 @@
   --border-strong: #2a2a2a;
   --border-focus: #444444;
   --text: #ededed;
-  --text-secondary: #a1a1a1;
-  --text-tertiary: #666666;
+  --text-2: #a1a1a1;
+  --text-3: #6b6b6b;
   --accent: #0070f3;
+  --accent-soft: rgba(0, 112, 243, 0.14);
   --accent-hover: #338bfb;
   --success: #0ce39c;
   --warn: #f5a623;
@@ -27,8 +28,8 @@
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-text: var(--text);
-  --color-text-2: var(--text-secondary);
-  --color-text-3: var(--text-tertiary);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
   --color-accent: var(--accent);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-ibm-plex-mono);
@@ -106,4 +107,31 @@ body::before {
     radial-gradient(800px 400px at 0% 110%, rgba(12, 227, 156, 0.05), transparent 60%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* Focus-visible ring used by interactive controls — Linear-ish */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--border-focus);
+  border-radius: 6px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: var(--border-focus);
+}
+
+/* Token-bar subtle pulse for "live" status pips */
+@keyframes csdm-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.86); }
+}
+
+.csdm-pulse {
+  animation: csdm-pulse 2.4s ease-in-out infinite;
 }
