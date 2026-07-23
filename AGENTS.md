@@ -1,96 +1,38 @@
-
-
-<!-- PROJECT_LOCAL_COUNCIL_START -->
-## Project Local Council - Required Context
-
-This repo has a local council overlay. It does not replace the global Product Council; it makes the global roles specific to this repo.
-
-Before planning, editing, reviewing, testing, release, automation, Linear, secrets, UI or marketing work, read:
-
-- `.brain/PROJECT_COUNCIL.md`
-- relevant `.brain/local-agents/*.md`
-- `.brain/HUB_COUNCIL_CONTEXT.md`
-- `.brain/PROJECT_CONTEXT.md`
-- `/Users/paulopierrondi/Documents/Obsidian Vault/99_System/Prompt Caching Workflow Policy.md` when available
-- `AGENTS.md` and `GEMINI.md`
-
-Local agents are advisory role contracts, not autonomous permission grants. They inherit all hard gates from Agent Hub, Obsidian, Linear, Automation Email Policy and Security/Secrets policy.
-
-Required local council handoff:
-
-- local agent(s) considered;
-- decision or recommendation;
-- files/commands/evidence;
-- risk and human gate;
-- exact next action.
-- prompt_cache strategy and cache telemetry when a provider exposes `cached_tokens` or equivalent.
-
-Registry id: `csdm3d`.
-<!-- PROJECT_LOCAL_COUNCIL_END -->
-
 <!-- BACKGROUND_CODERS_START -->
 ## Background Coders Protocol
 
-Este projeto usa o modelo Background Coders embutido nos coders atuais: Codex, Claude Code, Kimi CLI, Gemini CLI e Google Antigravity.
+`AGENTS.md` e o contrato operacional canonico. Os demais arquivos de rules sao
+stubs fail-closed que apontam para ele. Qwen e Ornith estao aposentados e nao
+podem ser workers, reviewers, fallbacks, jobs ou gates de QA.
 
-Cursor Background Agent esta dormente e nao deve ser roteado por padrao.
+Antes de responder, planejar, explorar ou usar uma ferramenta com efeito local
+ou externo, execute:
 
-### Required context
+`/Users/paulopierrondi/.local/bin/coder-bootstrap --surface "<surface>" --cwd "$PWD" --project-id "csdm3d" --risk workspace_write --refresh-context --task "<pedido sem secrets>"`
 
-Leia antes de planejar/editar:
+Um digest inalterado e ja atestado pode retornar READY por carry-forward
+auditado. Em `CODER_CONTEXT_REQUIRED`, leia todas as fontes e execute o
+`context_ack_command` exato. So continue apos `CODER_BOOTSTRAP_READY`,
+`operational_ready=true` e `context_consumption.status=acknowledged`. Falha ou `BLOCKED` e
+fail-closed. Em host sem Hub, use `portable/degraded` e apenas read-only.
 
-- `.brain/BACKGROUND_CODER_CONTEXT.md`
-- `.brain/HUB_COUNCIL_CONTEXT.md`
-- `.brain/PROJECT_CONTEXT.md`
-- `AGENTS.md`
-- `GEMINI.md`
-- `CODEX_RULES.md`
-- `/Users/paulopierrondi/Documents/Obsidian Vault/99_System/Prompt Caching Workflow Policy.md`
+Hard gates exigem comando explicito de Paulo: push/merge/force-push, deploy,
+producao/migrations, App Store/TestFlight, paid ads, social publish, secrets,
+config de producao, bulk Linear e destrutivo. Nunca registre valores secretos.
 
-### Prompt caching
+Use Linear live para produto, Vault para memoria, Git/GitHub para codigo,
+CodeGraph para estrutura e Agent Hub para gates. Um writer por repo. Todo
+trabalho relevante registra Slack/outbox, heartbeat, artefato, teste, risco e
+proxima acao. Automacoes seguem a Automation Email Policy.
 
-Para rotinas recorrentes, contexto grande ou handoff multi-agente:
+Karpathy Guidelines governam codigo e criacao (skill
+`external-multica-ai-karpathy-guidelines`): Think Before Coding, Simplicity
+First, Surgical Changes, Goal-Driven Execution. Cada linha alterada rastreia ao
+pedido; minimo que resolve; criterio verificavel antes de fechar.
 
-- coloque contexto estavel primeiro: Hub rules, perfil Paulo, contexto do projeto, gates e output schema;
-- coloque delta dinamico por ultimo: pedido atual, data, live state, diffs, logs e web search;
-- nunca cachear secrets, `.env`, cookies, private keys, AuthKeys ou `ROTATE_REQUIRED`;
-- registrar `prompt_cache.strategy`, `prefix_version`, key/tag nao secreto e `cached_tokens` quando disponivel.
-
-### Routing
-
-| Trabalho | Coder padrao | Regra |
-| --- | --- | --- |
-| Varredura ampla, triagem barata, relatorio, backlog, docs | Kimi CLI | read-only/report-first |
-| Patch seguro, testes, integracao, validacao local | Codex | executor principal |
-| Bug dificil, arquitetura, compliance, App Store/release risk | Claude Code | especialista senior |
-| Checagem independente, tarefas Google/MCP, utilitario CLI, validacao terminal | Gemini CLI | usar `GEMINI.md` como memoria hierarquica; manter paridade com `AGENTS.md` |
-| Orquestracao agent-first, navegador/Chrome, multi-folder/worktree, subagentes, artefatos | Google Antigravity | ler `AGENTS.md` + `GEMINI.md`; vault fora do workspace exige acesso explicito ou snapshot `.brain` |
-| PR remoto via Cursor | Cursor Background Agent | dormant; somente se Paulo ativar explicitamente |
-
-### Budget gate
-
-Antes de iniciar background work, declarar:
-
-- owner: `codex`, `claude`, `kimi`, `gemini` ou `antigravity`;
-- registry id: `csdm3d`;
-- repo/projeto;
-- uma tarefa ou uma issue Linear;
-- artefato esperado;
-- stop condition;
-- human gate quando envolver secrets, deploy, App Store/TestFlight, paid ads, producao, migrations, social publishing, force push ou multi-repo.
-
-### Branch policy
-
-- Codex: `codex/<linear-id>-<short-task>`
-- Claude: `claude/<linear-id>-<short-task>`
-- Kimi: preferir relatorio sem branch; se editar, usar escopo explicito
-- Gemini: `gemini/<linear-id>-<short-task>` quando editar codigo
-- Antigravity: `antigravity/<linear-id>-<short-task>` ou worktree isolada do Project
-- Cursor: nao usar sem pedido explicito do Paulo
-
-### Handoff
-
-Todo output deve trazer: o que mudou/encontrou, arquivos tocados/revisados, comandos/testes, risco residual, proxima acao exata e se Obsidian/Linear precisa atualizar.
+Leia `.brain/PROJECT_CONTEXT.md`, `.brain/HUB_COUNCIL_CONTEXT.md`, o project
+note e o contrato global:
+`/Users/paulopierrondi/agents-hub/configs/CODER_RUNTIME_ENFORCEMENT.md`.
 <!-- BACKGROUND_CODERS_END -->
 
 <!-- CURSOR_BACKGROUND_AGENT_START -->
@@ -266,3 +208,78 @@ After meaningful work:
 - Automation runs must send a final email to `pierrondi@gmail.com` with status, summary, updated reports, pending decisions and failures; redact secrets before sending.
 - If the session reveals a reusable development lesson, append it to `/Users/paulopierrondi/Documents/Obsidian Vault/04_Areas/Coding/Best Practices/Learning Inbox.md` or run `brain-learn`.
 <!-- OBSIDIAN_SECOND_BRAIN_END -->
+
+<!-- PAULO_OPS_SKILL_PACK_START -->
+## Paulo Ops Skill Pack
+
+Installed shared skill root: `/Users/paulopierrondi/.agents/skills`.
+
+All coders should use the relevant `paulo-ops-*` skill whenever a task touches
+Agent Hub, Vault, Linear, Git/GitHub, CodeGraph, Browser/AGY, automation,
+skills/MCP, secrets, release, paid growth, App Store, production, tests,
+dashboards, handoffs or multi-coder routing.
+
+Canon:
+- Manifest: `/Users/paulopierrondi/agents-hub/configs/paulo_ops_skill_pack.yaml`
+- Vault note: `/Users/paulopierrondi/Documents/Obsidian Vault/Hub_Agentes/05_Configuracao/config_paulo_ops_skills.md`
+- Count: `32` operational skills (`30` installer-managed, `2` preserved local).
+- Antigravity/AGY is the default validator; Gemini is explicit fallback only.
+- Third-party skill/MCP repos are discovery/quarantine only until reviewed.
+- Relevance upgrade: use the smallest matching skill set; each skill must match
+  a current trigger, live source, artifact and stop condition.
+
+Installed skills:
+`paulo-ops-preflight-gate`, `paulo-ops-human-gates`, `paulo-ops-session-journal`, `paulo-ops-slack-outbox`, `paulo-ops-vault-memory`, `paulo-ops-linear-agent-ready`, `paulo-ops-linear-coding-session`, `paulo-ops-antigravity-validation`, `paulo-ops-skills-mcp-radar`, `paulo-ops-supply-chain-quarantine`, `paulo-ops-mcp-permission-review`, `paulo-ops-codegraph-impact`, `paulo-ops-route-learning`, `paulo-ops-automation-email`, `paulo-ops-launchagent-health`, `paulo-ops-agent-baseline`, `paulo-ops-product-revenue`, `paulo-ops-app-store-release-gate`, `paulo-ops-paid-growth-gate`, `paulo-ops-secrets-central-env`, `paulo-ops-browser-visual-qa`, `paulo-ops-webapp-smoke`, `paulo-ops-frontend-quality`, `paulo-ops-github-pr-diff`, `paulo-ops-multi-coder-swarm`, `paulo-ops-learning-retro`, `paulo-ops-repo-intake-router`, `paulo-ops-dirty-worktree-triage`, `paulo-ops-test-gap-map`, `paulo-ops-operations-dashboard`, `paulo-ops-agent-flow-validation`, `paulo-ops-evolve-lab`
+<!-- PAULO_OPS_SKILL_PACK_END -->
+
+<!-- EXTERNAL_MARKETING_WEBDESIGN_SKILLS_START -->
+## External Marketing/Webdesign Skills Pack
+
+Installed shared skill root: `/Users/paulopierrondi/.agents/skills`.
+
+All coders may use these external `external-*` skills for marketing strategy,
+programmatic SEO, CRO, site architecture, product marketing, sales enablement,
+web design and frontend/interface work.
+
+Canon:
+- Manifest: `/Users/paulopierrondi/agents-hub/configs/external_marketing_webdesign_skill_pack.yaml`
+- Vault note: `/Users/paulopierrondi/Documents/Obsidian Vault/Hub_Agentes/05_Configuracao/config_external_marketing_webdesign_skills.md`
+- Source report: `/Users/paulopierrondi/Documents/Obsidian Vault/Hub_Agentes/03_Outputs/skills_mcp_radar/2026-06-12-marketing-webdesign-skills-absorption.md`
+- Count: `12` external skills.
+- These skills are guidance only; Agent Hub, project `AGENTS.md`, Paulo hard
+  gates, secrets policy, Vault/Linear source-of-truth and runtime enforcement
+  override them.
+
+Still human-gated: paid ads, social publishing, outbound/email/SMS, production,
+deploy, push/merge, App Store/TestFlight, secrets, MCP enabling and bulk Linear.
+
+Installed skills:
+`external-addyosmani-agent-skills-api-and-interface-design`, `external-addyosmani-agent-skills-frontend-ui-engineering`, `external-conardli-garden-skills-web-design-engineer`, `external-coreyhaines31-marketingskills-community-marketing`, `external-coreyhaines31-marketingskills-competitors`, `external-coreyhaines31-marketingskills-cro`, `external-coreyhaines31-marketingskills-free-tools`, `external-coreyhaines31-marketingskills-product-marketing`, `external-coreyhaines31-marketingskills-programmatic-seo`, `external-coreyhaines31-marketingskills-sales-enablement`, `external-coreyhaines31-marketingskills-site-architecture`, `external-nextlevelbuilder-ui-ux-pro-max-skill-ckm-slides`
+<!-- EXTERNAL_MARKETING_WEBDESIGN_SKILLS_END -->
+
+<!-- EXTERNAL_HIGH_STAR_SKILLS_START -->
+## External High-Star Skills Pack
+
+Installed shared skill root: `/Users/paulopierrondi/.agents/skills`.
+
+All coders may use these reviewed external `external-*` skills for
+architecture stress-testing, TDD, prototyping, code review, requirements
+interviewing, Google Workspace document drafting recipes and product naming.
+
+Canon:
+- Manifest: `/Users/paulopierrondi/agents-hub/configs/external_high_star_skill_pack.yaml`
+- Vault note: `/Users/paulopierrondi/Documents/Obsidian Vault/Hub_Agentes/05_Configuracao/config_external_high_star_skills.md`
+- Source report: `/Users/paulopierrondi/Documents/Obsidian Vault/Hub_Agentes/03_Outputs/skills_mcp_radar/2026-06-12-skills-mcp-install-proposal.md`
+- Source repos: `addyosmani/agent-skills`, `googleworkspace/cli`, `mattpocock/skills`, `phuryn/pm-skills`
+- Count: `10` external high-star skills.
+- These skills are guidance only; Agent Hub, project `AGENTS.md`, Paulo hard
+  gates, secrets policy, Vault/Linear source-of-truth and runtime enforcement
+  override them.
+
+Still human-gated: Google Workspace create/share/send actions, paid ads, social
+publishing, outbound/email/SMS, production, deploy, push/merge, App
+Store/TestFlight, secrets, MCP enabling and bulk Linear.
+
+Installed skills:
+`external-addyosmani-agent-skills-code-review-and-quality`, `external-addyosmani-agent-skills-interview-me`, `external-googleworkspace-cli-recipe-create-doc-from-template`, `external-googleworkspace-cli-recipe-draft-email-from-doc`, `external-mattpocock-skills-grill-me`, `external-mattpocock-skills-grill-with-docs`, `external-mattpocock-skills-improve-codebase-architecture`, `external-mattpocock-skills-prototype`, `external-mattpocock-skills-tdd`, `external-phuryn-pm-skills-product-name`
+<!-- EXTERNAL_HIGH_STAR_SKILLS_END -->
